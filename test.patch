@@ -3,26 +3,6 @@ index 360cd54b..1a2b3c4d 100644
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
 @@
--def test_builtin_data_endpoint_simple_rows():
--    class SimpleTable(Table):
--        foo = Column()
--        bar = Column()
--
--    table = SimpleTable(rows=[Struct(foo=1, bar=2), Struct(foo=3, bar=4)])
--    bound_table = table.bind(request=req('get'))
--
--    payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
--
--    assert [column['name'] for column in payload['columns']] == ['foo', 'bar']
--    assert payload['columns'][0]['display_name'] == 'Foo'
--    assert payload['columns'][0]['sortable'] is True
--    assert payload['rows'] == [
--        {'foo': '1', 'bar': '2'},
--        {'foo': '3', 'bar': '4'},
--    ]
--    assert payload['paginator']['page'] == 1
--    assert payload['paginator']['hits'] == 2
--    assert payload['query'] == {}
 +def test_builtin_data_endpoint_simple_rows():
 +    class SimpleTable(Table):
 +        foo = Column()
@@ -54,13 +34,15 @@ index 360cd54b..1a2b3c4d 100644
 +    assert paginator['prev'] is None
 +
 +    assert payload['query'] == {}
-@@
--    table = Table(
--        auto__rows=TFoo.objects.all(),
--        columns__a__extra__csv_whitelist=True,
--        columns__b=Column(),
--        page_size=2,
--    )
++
++
++@pytest.mark.django_db
++def test_builtin_data_endpoint_queryset_pagination_and_metadata():
++    TFoo.objects.all().delete()
++
++    for i in range(1, 6):
++        TFoo.objects.create(a=i, b=f'foo-{i}')
++
 +    table = Table(
 +        auto__rows=TFoo.objects.all(),
 +        columns__a__extra__csv_whitelist=True,
@@ -68,14 +50,11 @@ index 360cd54b..1a2b3c4d 100644
 +        columns__hidden=Column(render_column=False),
 +        page_size=2,
 +    )
-@@
--    assert payload['query'] == {'order': '-a', 'page': '2'}
--    assert payload['sort_order'] == '-a'
--    assert payload['paginator']['page'] == 2
--    assert payload['paginator']['page_size'] == 2
--    assert payload['paginator']['hits'] == 5
--    assert payload['columns'][0]['csv_whitelisted'] is True
--    assert payload['columns'][0]['is_sorting'] is True
++
++    bound_table = table.bind(request=req('get', order='-a', page='2'))
++
++    payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
++
 +    assert payload['query'] == {'order': '-a', 'page': '2'}
 +
 +    columns = payload['columns']
@@ -92,11 +71,11 @@ index 360cd54b..1a2b3c4d 100644
 +        'next': 3,
 +        'prev': 1,
 +    }
-@@
-     assert payload['rows'] == [
-         {'a': '3', 'b': 'foo-3'},
-         {'a': '2', 'b': 'foo-2'},
-     ]
++
++    assert payload['rows'] == [
++        {'a': '3', 'b': 'foo-3'},
++        {'a': '2', 'b': 'foo-2'},
++    ]
 +
 +
 +@pytest.mark.django_db
@@ -121,16 +100,31 @@ index 360cd54b..1a2b3c4d 100644
 +    assert [column['name'] for column in payload['columns']] == ['b']
 +    assert payload['rows'] == [{'b': 'hello'}]
 +    assert payload['query'] == {'b': 'hello'}
++
++
 diff --git a/test.sh b/test.sh
-index b317ba77..c1d2e3f4 100755
---- a/test.sh
+new file mode 100755
+index 00000000..c1d2e3f4
+--- /dev/null
 +++ b/test.sh
 @@
-   new)
-     # Run only the newly added tests; expected to fail before implementing the feature
-     pytest \
-       iommi/table__tests.py::test_builtin_data_endpoint_simple_rows \
--      iommi/table__tests.py::test_builtin_data_endpoint_queryset_pagination_and_metadata
++#!/bin/bash
++set -e
++
++case "$1" in
++  base)
++    # Run existing test suite; should pass on the base commit
++    pytest tests docs
++    ;;
++  new)
++    # Run only the newly added tests; expected to fail before implementing the feature
++    pytest \
++      iommi/table__tests.py::test_builtin_data_endpoint_simple_rows \
 +      iommi/table__tests.py::test_builtin_data_endpoint_queryset_pagination_and_metadata \
 +      iommi/table__tests.py::test_builtin_data_endpoint_respects_filters_and_includes
-     ;;
++    ;;
++  *)
++    echo "Usage: ./test.sh {base|new}"
++    exit 1
++    ;;
++esac
