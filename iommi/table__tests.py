@@ -8,6 +8,7 @@ from datetime import (
 from textwrap import dedent
 from urllib.parse import urlencode
 
+from bs4 import BeautifulSoup
 import pytest
 from django.db.models import (
     F,
@@ -376,6 +377,81 @@ def test_generator():
             </table>
         """,
     )
+
+
+def test_table_column_footer_aggregations():
+    rows = [
+        Struct(item='Widget', quantity=2, price=10.0),
+        Struct(item='Gadget', quantity=4, price=5.0),
+        Struct(item='Doodad', quantity=0, price=None),
+    ]
+
+    class SummaryTable(Table):
+        item = Column(
+            footer__include=True,
+            footer__value=lambda **_: mark_safe('<strong>Totals</strong>'),
+            footer__format=lambda value, **_: value,
+            group='Summary',
+        )
+        quantity = Column.integer(
+            attr='quantity',
+            footer__include=True,
+            footer__aggregation='sum',
+            group='Metrics',
+        )
+        price = Column.number(
+            attr='price',
+            footer__include=True,
+            footer__aggregation='avg',
+            footer__format=lambda value, **_: f'{value:.1f}' if value is not None else '',
+            group='Metrics',
+        )
+
+    table = SummaryTable(rows=rows)
+    html = table.bind(request=req('get')).__html__()
+    soup = BeautifulSoup(html, 'html.parser')
+    footer = soup.find('tfoot')
+    assert footer is not None
+    footer_cells = footer.find_all('td')
+
+    assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '6', '7.5']
+    assert '<strong>Totals</strong>' in str(footer_cells[0])
+
+
+def test_table_footer_pagination_scope():
+    rows = [
+        Struct(name='A', quantity=2),
+        Struct(name='B', quantity=3),
+        Struct(name='C', quantity=5),
+    ]
+
+    class PaginatedFooterTable(Table):
+        class Meta:
+            page_size = 2
+
+        name = Column(
+            footer__include=True,
+            footer__value='Totals',
+        )
+        quantity_total = Column.integer(
+            attr='quantity',
+            footer__include=True,
+            footer__aggregation='sum',
+        )
+        quantity_visible = Column.integer(
+            attr='quantity',
+            footer__include=True,
+            footer__aggregation='sum',
+            footer__use_visible_rows=True,
+        )
+
+    table = PaginatedFooterTable(rows=rows)
+    bound_table = table.bind(request=req('get'))
+    html = bound_table.__html__()
+    soup = BeautifulSoup(html, 'html.parser')
+    footer_cells = soup.find('tfoot').find_all('td')
+
+    assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '10', '5']
 
 
 @pytest.fixture

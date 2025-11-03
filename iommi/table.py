@@ -311,6 +311,47 @@ def default_cell_formatter(table: 'Table', column: 'Column', row, value, **_):
     return conditional_escape(value)
 
 
+def default_footer_formatter(table: 'Table', column: 'Column', value, values=None, rows=None, **_):
+    del table, column, values, rows
+    if value is None:
+        return ''
+    return conditional_escape(value)
+
+
+def _aggregate_sum(values):
+    total = None
+    for value in values:
+        if value is None:
+            continue
+        if total is None:
+            total = value
+        else:
+            total += value
+    return total
+
+
+def _aggregate_avg(values):
+    total = None
+    count = 0
+    for value in values:
+        if value is None:
+            continue
+        if total is None:
+            total = value
+        else:
+            total += value
+        count += 1
+    if count == 0:
+        return None
+    return total / count
+
+
+_FOOTER_AGGREGATIONS = {
+    'sum': _aggregate_sum,
+    'avg': _aggregate_avg,
+}
+
+
 def default_cell__value(column, row, **kwargs):
     if column.attr is None:
         return None
@@ -382,6 +423,7 @@ class Column(Part):
     auto_rowspan: bool = EvaluatedRefinable()
     row_group: Namespace = EvaluatedRefinable()
     cell: Namespace = Refinable()
+    footer: Namespace = Refinable()
     model: Type[Model] = SpecialEvaluatedRefinable()
     model_field = Refinable()
     model_field_name = Refinable()
@@ -398,6 +440,8 @@ class Column(Part):
         cell__attrs = EMPTY
         cell__contents__attrs = EMPTY
         cell__link = EMPTY
+        footer = EMPTY
+        footer__attrs = EMPTY
 
     @with_defaults(
         attr=MISSING,
@@ -423,6 +467,14 @@ class Column(Part):
         row_group__template='iommi/table/row_group.html',
         row_group__tag='th',
         row_group__attrs__colspan='99',
+        footer__include=False,
+        footer__aggregation=None,
+        footer__value=None,
+        footer__format=default_footer_formatter,
+        footer__attrs=EMPTY,
+        footer__tag='td',
+        footer__template=None,
+        footer__use_visible_rows=None,
     )
     def __init__(self, **kwargs):
         """
@@ -503,6 +555,7 @@ class Column(Part):
         )
         self.declared_column = self._declared
         self.cell = Namespace(flatten(self.cell))
+        self.footer = Namespace(flatten(self.footer))
 
         # Not strict evaluate on purpose
         self.model = evaluate(self.model, **self.iommi_evaluate_parameters())
@@ -1763,6 +1816,14 @@ class _Lazy_tbody:
         return mark_safe('\n'.join([cells.__html__() for cells in self.table.cells_for_rows()]))
 
 
+class _Lazy_tfoot:
+    def __init__(self, table):
+        self.table = table
+
+    def __html__(self):
+        return mark_safe(self.table._render_footer_cells())
+
+
 def get_queryset_ordering(queryset):
     # Check if queryset has default_ordering flag set to False
     # (This happens when .order_by() is called with no arguments)
@@ -1831,6 +1892,7 @@ class Table(Part, Tag):
     actions_template: Union[str, Template] = EvaluatedRefinable()
     actions_below: bool = EvaluatedRefinable()
     tbody: Fragment = EvaluatedRefinable()
+    footer: Fragment = EvaluatedRefinable()
     container: Fragment = EvaluatedRefinable()
     table_tag_wrapper: Fragment = EvaluatedRefinable()
     outer: Fragment = EvaluatedRefinable()
@@ -1873,6 +1935,7 @@ class Table(Part, Tag):
         attrs__class = EMPTY
         attrs__style = EMPTY
         table_tag_wrapper = EMPTY
+        footer = EMPTY
 
     @staticmethod
     @refinable
@@ -1897,10 +1960,16 @@ class Table(Part, Tag):
         bulk_exclude={},
         sortable=True,
         default_sort_order=None,
-        template='iommi/table/table.html',
-        tbody__call_target=Fragment,
-        tbody__tag='tbody',
-        container__tag='div',
+          template='iommi/table/table.html',
+          tbody__call_target=Fragment,
+          tbody__tag='tbody',
+          footer__call_target=Fragment,
+          footer__tag='tfoot',
+          footer__children__row__call_target=Fragment,
+          footer__children__row__tag='tr',
+          footer__children__row__attrs=EMPTY,
+          footer__extra__paginate=False,
+          container__tag='div',
         container__attrs__class={'iommi-table-container': True},
         container__children__text__template='iommi/table/table_container.html',
         container__call_target=Fragment,
@@ -1999,7 +2068,7 @@ class Table(Part, Tag):
         self.initial_rows = self.rows
         self.header = HeaderConfig(_name='header', **self.header).refine_done(parent=self)
         self.row = RowConfig(**self.row).refine_done(parent=self)
-        self._preprocessed_rows = None
+        self._preprocessed_rows = {True: None, False: None}
 
         # In bind initial_rows will be used to set these 3 (in that order)
         self.sorted_rows = None
@@ -2203,6 +2272,8 @@ class Table(Part, Tag):
 
         # noinspection PyCallingNonCallable
         self.tbody = self.tbody(_name='tbody').refine_done(parent=self)
+        # noinspection PyCallingNonCallable
+        self.footer = self.footer(_name='footer').refine_done(parent=self)
 
         super(Table, self).on_refine_done()
 
@@ -2233,6 +2304,24 @@ class Table(Part, Tag):
         bind_member(self, name='tbody')
         self.tbody.children.text = _Lazy_tbody(self)
         self.tbody.children = sort_after(self.tbody.children)
+
+        self._footer_paginate = False
+        bind_member(self, name='footer')
+        if getattr(self, 'footer', None):
+            self.footer.children = sort_after(self.footer.children)
+            footer_row = getattr(self.footer.children, 'row', None)
+            if footer_row:
+                footer_row.children = sort_after(footer_row.children)
+            if self._has_footer_columns():
+                self._footer_paginate = bool(
+                    evaluate_strict(getattr(self.footer.extra, 'paginate', False), table=self)
+                )
+                target_fragment = footer_row if footer_row else self.footer
+                target_fragment.children.text = _Lazy_tfoot(self)
+                target_fragment.children = sort_after(target_fragment.children)
+                self.footer.include = True
+            else:
+                self.footer.include = False
 
         bind_member(self, name='container')
         bind_member(self, name='table_tag_wrapper')
@@ -2506,13 +2595,15 @@ class Table(Part, Tag):
             rows = self.get_visible_rows()
         else:
             rows = self.sorted_and_filtered_rows
-        if not self._preprocessed_rows:
-            self._preprocessed_rows = list(self.invoke_callback(self.preprocess_rows, rows=rows))
+
+        cache_key = bool(paginate)
+        if self._preprocessed_rows[cache_key] is None:
+            self._preprocessed_rows[cache_key] = list(self.invoke_callback(self.preprocess_rows, rows=rows))
 
         row_groups = [c for c in values(self.columns) if c.row_group.include]
         row_group_values = {c._name: None for c in row_groups}
 
-        for i, row in enumerate(self._preprocessed_rows):
+        for i, row in enumerate(self._preprocessed_rows[cache_key]):
             row = self.invoke_callback(self.preprocess_row, row=row)
             assert row is not None, 'preprocess_row must return the row'
 
@@ -2526,6 +2617,128 @@ class Table(Part, Tag):
 
             # noinspection PyCallingNonCallable
             yield self.cells_class(row=row, row_index=i, **self.row.as_dict()).bind(parent=self)
+
+    def _has_footer_columns(self):
+        return any(self._column_footer_include(column) for column in values(self.columns) if column.render_column)
+
+    def _column_footer_include(self, column):
+        include = getattr(column.footer, 'include', False)
+        return bool(evaluate_strict(include, table=self, column=column))
+
+    def _footer_paginate_for_column(self, column):
+        use_visible = getattr(column.footer, 'use_visible_rows', None)
+        if use_visible is not None:
+            return bool(evaluate_strict(use_visible, table=self, column=column))
+        return self._footer_paginate
+
+    def _footer_values_for_column(self, column, paginate):
+        values_list = []
+        rows_list = []
+        for cells in self.cells_for_rows(paginate=paginate):
+            if not isinstance(cells, self.cells_class):
+                continue
+            bound_cell = cells[column._name]
+            values_list.append(bound_cell.value)
+            rows_list.append(cells.row)
+        return values_list, rows_list
+
+    def _compute_footer_value(self, column, values, rows):
+        aggregation = getattr(column.footer, 'aggregation', None)
+        result = None
+        if aggregation:
+            if isinstance(aggregation, str):
+                aggregator = _FOOTER_AGGREGATIONS.get(aggregation.lower())
+                if aggregator is None:
+                    raise ImproperlyConfigured(
+                        f"Unknown footer aggregation '{aggregation}' for column {column._name}"
+                    )
+                result = aggregator(values)
+            else:
+                result = self.invoke_callback(aggregation, column=column, values=values, rows=rows)
+
+        value_conf = getattr(column.footer, 'value', None)
+        if value_conf is not None:
+            result = evaluate_strict(value_conf, table=self, column=column, values=values, rows=rows)
+
+        return result
+
+    def _render_footer_cell(self, column):
+        include = self._column_footer_include(column)
+        paginate = self._footer_paginate_for_column(column)
+        values = []
+        rows = []
+        value = None
+        formatted = ''
+
+        if include:
+            values, rows = self._footer_values_for_column(column, paginate)
+            value = self._compute_footer_value(column, values, rows)
+            formatted = evaluate_strict(
+                column.footer.format,
+                table=self,
+                column=column,
+                value=value,
+                values=values,
+                rows=rows,
+            )
+
+        tag = evaluate_strict(
+            column.footer.tag,
+            table=self,
+            column=column,
+            value=value,
+            formatted_value=formatted,
+            values=values,
+            rows=rows,
+        )
+
+        attrs_conf = getattr(column.footer, 'attrs', EMPTY)
+        attrs = evaluate_attrs(
+            Struct(attrs=attrs_conf),
+            table=self,
+            column=column,
+            value=value,
+            formatted_value=formatted,
+            values=values,
+            rows=rows,
+        )
+
+        template = getattr(column.footer, 'template', None)
+
+        if template:
+            rendered_cell = render_template(
+                request=self.get_request(),
+                template=template,
+                context=dict(
+                    table=self,
+                    column=column,
+                    value=value,
+                    formatted_value=formatted,
+                    values=values,
+                    rows=rows,
+                    attrs=attrs,
+                    tag=tag,
+                ),
+            )
+        elif tag:
+            rendered_cell = format_html(
+                '<{tag}{attrs}>{value}</{tag}>',
+                tag=tag,
+                attrs=attrs,
+                value=formatted,
+            )
+        else:
+            rendered_cell = format_html('{}', formatted)
+
+        return rendered_cell
+
+    def _render_footer_cells(self):
+        columns = [column for column in values(self.columns) if column.render_column]
+        if not columns:
+            return ''
+
+        rendered_cells = [self._render_footer_cell(column) for column in columns]
+        return '\n'.join(str(cell) for cell in rendered_cells)
 
     @classmethod
     @dispatch()
