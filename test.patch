@@ -2,7 +2,11 @@ diff --git a/iommi/table__tests.py b/iommi/table__tests.py
 index 360cd54b..1a2b3c4d 100644
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
-@@
+@@ -2370,6 +2370,109 @@ def test_ajax_endpoint_empty_response():
+     actual = perform_ajax_dispatch(root=TestTable(rows=[]).bind(request=req('get')), path='/foo', value='')
+     assert actual == []
+ 
+ 
 +def test_builtin_data_endpoint_simple_rows():
 +    class SimpleTable(Table):
 +        foo = Column()
@@ -102,12 +106,17 @@ index 360cd54b..1a2b3c4d 100644
 +    assert payload['query'] == {'b': 'hello'}
 +
 +
+ def test_ajax_data_endpoint():
+     class TestTable(Table):
+         class Meta:
+             @staticmethod
+             def endpoints__data__func(table, **_):
 diff --git a/test.sh b/test.sh
 new file mode 100755
 index 00000000..c1d2e3f4
 --- /dev/null
 +++ b/test.sh
-@@
+@@ -0,0 +1,20 @@
 +#!/bin/bash
 +set -e
 +
