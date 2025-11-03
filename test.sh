@@ -1,28 +1,19 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-usage() {
-    echo "Usage: $0 {base|new}" >&2
-    exit 1
-}
-
-if [[ $# -ne 1 ]]; then
-    usage
-fi
+#!/bin/bash
+set -e
 
 case "$1" in
-    base)
-        pytest tests docs
-        ;;
-    new)
-        pytest \
-            iommi/table__tests.py::test_builtin_data_endpoint_simple_rows \
-            iommi/table__tests.py::test_builtin_data_endpoint_queryset_pagination_and_metadata
-        ;;
-    *)
-        usage
-        ;;
+  base)
+    # Run existing test suite; should pass on the base commit
+    pytest tests docs
+    ;;
+  new)
+    # Run only the newly added tests; expected to fail before implementing the feature
+    pytest \
+      iommi/table__tests.py::test_builtin_data_endpoint_simple_rows \
+      iommi/table__tests.py::test_builtin_data_endpoint_queryset_pagination_and_metadata
+    ;;
+  *)
+    echo "Usage: ./test.sh {base|new}"
+    exit 1
+    ;;
 esac
