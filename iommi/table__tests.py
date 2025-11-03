@@ -2369,6 +2369,59 @@ def test_ajax_endpoint_empty_response():
     assert actual == []
 
 
+def test_builtin_data_endpoint_simple_rows():
+    class SimpleTable(Table):
+        foo = Column()
+        bar = Column()
+
+    table = SimpleTable(rows=[Struct(foo=1, bar=2), Struct(foo=3, bar=4)])
+    bound_table = table.bind(request=req('get'))
+
+    payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
+
+    assert [column['name'] for column in payload['columns']] == ['foo', 'bar']
+    assert payload['columns'][0]['display_name'] == 'Foo'
+    assert payload['columns'][0]['sortable'] is True
+    assert payload['rows'] == [
+        {'foo': '1', 'bar': '2'},
+        {'foo': '3', 'bar': '4'},
+    ]
+    assert payload['paginator']['page'] == 1
+    assert payload['paginator']['hits'] == 2
+    assert payload['query'] == {}
+
+
+@pytest.mark.django_db
+def test_builtin_data_endpoint_queryset_pagination_and_metadata():
+    TFoo.objects.all().delete()
+
+    for i in range(1, 6):
+        TFoo.objects.create(a=i, b=f'foo-{i}')
+
+    table = Table(
+        auto__rows=TFoo.objects.all(),
+        columns__a__extra__csv_whitelist=True,
+        columns__b=Column(),
+        page_size=2,
+    )
+
+    bound_table = table.bind(request=req('get', order='-a', page='2'))
+
+    payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
+
+    assert payload['query'] == {'order': '-a', 'page': '2'}
+    assert payload['sort_order'] == '-a'
+    assert payload['paginator']['page'] == 2
+    assert payload['paginator']['page_size'] == 2
+    assert payload['paginator']['hits'] == 5
+    assert payload['columns'][0]['csv_whitelisted'] is True
+    assert payload['columns'][0]['is_sorting'] is True
+    assert payload['rows'] == [
+        {'a': '3', 'b': 'foo-3'},
+        {'a': '2', 'b': 'foo-2'},
+    ]
+
+
 def test_ajax_data_endpoint():
     class TestTable(Table):
         class Meta:
