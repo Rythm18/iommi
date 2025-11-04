@@ -108,7 +108,7 @@ index 360cd54b634c..1a2b3c4d5e6f 100644
      class TestTable(Table):
          class Meta:
 diff --git a/test.sh b/test.sh
-new file mode 100644
+new file mode 100755
 index 00000000..27076ab2
 --- /dev/null
 +++ b/test.sh
