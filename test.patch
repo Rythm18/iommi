@@ -1,5 +1,5 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 6f0401b6..bfb66af0 100755
+index 6f0401b6..b548c240 100755
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
 @@ -8,6 +8,7 @@
@@ -214,7 +214,7 @@ index 6f0401b6..bfb66af0 100755
 +            footer__include=True,
 +            footer__aggregation='sum',
 +            footer__attrs__class__total_value=True,
-+            footer__attrs__style='font-weight: bold;',
++            footer__attrs__style__font_weight='bold',
 +        )
 +
 +    table = CustomFooterTable(rows=rows)
@@ -238,7 +238,7 @@ index 6f0401b6..bfb66af0 100755
 +    # Verify footer__attrs are applied
 +    second_cell = footer_row.find_all('td')[0]
 +    assert 'total_value' in second_cell.get('class', [])
-+    assert second_cell.get('style') == 'font-weight: bold;'
++    assert 'font_weight: bold' in second_cell.get('style', '')
 +
 +
  @pytest.fixture

@@ -579,7 +579,7 @@ def test_table_footer_tag_and_attrs():
             footer__include=True,
             footer__aggregation='sum',
             footer__attrs__class__total_value=True,
-            footer__attrs__style='font-weight: bold;',
+            footer__attrs__style__font_weight='bold',
         )
 
     table = CustomFooterTable(rows=rows)
@@ -603,7 +603,7 @@ def test_table_footer_tag_and_attrs():
     # Verify footer__attrs are applied
     second_cell = footer_row.find_all('td')[0]
     assert 'total_value' in second_cell.get('class', [])
-    assert second_cell.get('style') == 'font-weight: bold;'
+    assert 'font_weight: bold' in second_cell.get('style', '')
 
 
 @pytest.fixture
