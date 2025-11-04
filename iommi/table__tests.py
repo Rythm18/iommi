@@ -454,6 +454,36 @@ def test_table_footer_pagination_scope():
     assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '10', '5']
 
 
+def test_table_footer_table_default_paginate():
+    rows = [
+        Struct(name='A', quantity=2),
+        Struct(name='B', quantity=3),
+        Struct(name='C', quantity=5),
+    ]
+
+    class DefaultPaginateTable(Table):
+        class Meta:
+            page_size = 2
+
+        name = Column(
+            footer__include=True,
+            footer__value='Totals',
+        )
+        quantity = Column.integer(
+            attr='quantity',
+            footer__include=True,
+            footer__aggregation='sum',
+        )
+
+    table = DefaultPaginateTable(rows=rows, footer__extra__paginate=True)
+    bound_table = table.bind(request=req('get'))
+    html = bound_table.__html__()
+    soup = BeautifulSoup(html, 'html.parser')
+    footer_cells = soup.find('tfoot').find_all('td')
+
+    assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '5']
+
+
 @pytest.fixture
 def NoSortTable():  # noqa: N802
     class NoSortTable(Table):

@@ -1,66 +1,19 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 6f0401b6..54233c9d 100755
+index 54233c9d..3056177d 100755
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
-@@ -8,6 +8,7 @@
- from textwrap import dedent
- from urllib.parse import urlencode
- 
-+from bs4 import BeautifulSoup
- import pytest
- from django.db.models import (
-     F,
-@@ -378,6 +379,81 @@ class TestTable(Table):
-     )
+@@ -454,6 +454,36 @@ class Meta:
+     assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '10', '5']
  
  
-+def test_table_column_footer_aggregations():
-+    rows = [
-+        Struct(item='Widget', quantity=2, price=10.0),
-+        Struct(item='Gadget', quantity=4, price=5.0),
-+        Struct(item='Doodad', quantity=0, price=None),
-+    ]
-+
-+    class SummaryTable(Table):
-+        item = Column(
-+            footer__include=True,
-+            footer__value=lambda **_: mark_safe('<strong>Totals</strong>'),
-+            footer__format=lambda value, **_: value,
-+            group='Summary',
-+        )
-+        quantity = Column.integer(
-+            attr='quantity',
-+            footer__include=True,
-+            footer__aggregation='sum',
-+            group='Metrics',
-+        )
-+        price = Column.number(
-+            attr='price',
-+            footer__include=True,
-+            footer__aggregation='avg',
-+            footer__format=lambda value, **_: f'{value:.1f}' if value is not None else '',
-+            group='Metrics',
-+        )
-+
-+    table = SummaryTable(rows=rows)
-+    html = table.bind(request=req('get')).__html__()
-+    soup = BeautifulSoup(html, 'html.parser')
-+    footer = soup.find('tfoot')
-+    assert footer is not None
-+    footer_cells = footer.find_all('td')
-+
-+    assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '6', '7.5']
-+    assert '<strong>Totals</strong>' in str(footer_cells[0])
-+
-+
-+def test_table_footer_pagination_scope():
++def test_table_footer_table_default_paginate():
 +    rows = [
 +        Struct(name='A', quantity=2),
 +        Struct(name='B', quantity=3),
 +        Struct(name='C', quantity=5),
 +    ]
 +
-+    class PaginatedFooterTable(Table):
++    class DefaultPaginateTable(Table):
 +        class Meta:
 +            page_size = 2
 +
@@ -68,52 +21,35 @@ index 6f0401b6..54233c9d 100755
 +            footer__include=True,
 +            footer__value='Totals',
 +        )
-+        quantity_total = Column.integer(
++        quantity = Column.integer(
 +            attr='quantity',
 +            footer__include=True,
 +            footer__aggregation='sum',
-+        )
-+        quantity_visible = Column.integer(
-+            attr='quantity',
-+            footer__include=True,
-+            footer__aggregation='sum',
-+            footer__use_visible_rows=True,
 +        )
 +
-+    table = PaginatedFooterTable(rows=rows)
++    table = DefaultPaginateTable(rows=rows, footer__extra__paginate=True)
 +    bound_table = table.bind(request=req('get'))
 +    html = bound_table.__html__()
 +    soup = BeautifulSoup(html, 'html.parser')
 +    footer_cells = soup.find('tfoot').find_all('td')
 +
-+    assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '10', '5']
++    assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '5']
 +
 +
  @pytest.fixture
  def NoSortTable():  # noqa: N802
      class NoSortTable(Table):
 diff --git a/test.sh b/test.sh
-new file mode 100755
-index 00000000..a48462d6
---- /dev/null
+index a48462d6..4e73ad50 100755
+--- a/test.sh
 +++ b/test.sh
-@@ -0,0 +1,19 @@
-+#!/bin/bash
-+set -e
-+
-+case "$1" in
-+  base)
-+    # Run existing test suite; should pass on the base commit
-+    python3 -m pytest tests docs
-+    ;;
-+  new)
-+    # Run only the newly added tests; expected to fail before implementing the feature
-+    python3 -m pytest \
-+      iommi/table__tests.py::test_table_column_footer_aggregations \
-+      iommi/table__tests.py::test_table_footer_pagination_scope
-+    ;;
-+  *)
-+    echo "Usage: ./test.sh {base|new}"
-+    exit 1
-+    ;;
-+esac
+@@ -10,7 +10,8 @@ case "$1" in
+     # Run only the newly added tests; expected to fail before implementing the feature
+     python3 -m pytest \
+       iommi/table__tests.py::test_table_column_footer_aggregations \
+-      iommi/table__tests.py::test_table_footer_pagination_scope
++      iommi/table__tests.py::test_table_footer_pagination_scope \
++      iommi/table__tests.py::test_table_footer_table_default_paginate
+     ;;
+   *)
+     echo "Usage: ./test.sh {base|new}"

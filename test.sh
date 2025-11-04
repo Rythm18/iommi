@@ -10,7 +10,8 @@ case "$1" in
     # Run only the newly added tests; expected to fail before implementing the feature
     python3 -m pytest \
       iommi/table__tests.py::test_table_column_footer_aggregations \
-      iommi/table__tests.py::test_table_footer_pagination_scope
+      iommi/table__tests.py::test_table_footer_pagination_scope \
+      iommi/table__tests.py::test_table_footer_table_default_paginate
     ;;
   *)
     echo "Usage: ./test.sh {base|new}"
