@@ -1,5 +1,5 @@
 diff --git a/iommi/table.py b/iommi/table.py
-index eb48953d..c777d5eb 100644
+index eb48953d..d08082a2 100644
 --- a/iommi/table.py
 +++ b/iommi/table.py
 @@ -311,6 +311,47 @@ def default_cell_formatter(table: 'Table', column: 'Column', row, value, **_):
@@ -160,7 +160,7 @@ index eb48953d..c777d5eb 100644
  
          super(Table, self).on_refine_done()
  
-@@ -2230,10 +2301,31 @@ def on_bind(self) -> None:
+@@ -2230,10 +2301,32 @@ def on_bind(self) -> None:
          self.title = evaluate_strict(self.title, **self.iommi_evaluate_parameters())
          build_and_bind_h_tag(self)
  
@@ -172,13 +172,14 @@ index eb48953d..c777d5eb 100644
          self.tbody.children = sort_after(self.tbody.children)
  
 +        self._footer_paginate = False
-+        bind_member(self, name='footer')
-+        if getattr(self, 'footer', None):
-+            self.footer.children = sort_after(self.footer.children)
-+            footer_row = getattr(self.footer.children, 'row', None)
-+            if footer_row:
-+                footer_row.children = sort_after(footer_row.children)
-+            if self._has_footer_columns():
++        has_footer = self._has_footer_columns()
++        if has_footer:
++            bind_member(self, name='footer')
++            if getattr(self, 'footer', None):
++                self.footer.children = sort_after(self.footer.children)
++                footer_row = getattr(self.footer.children, 'row', None)
++                if footer_row:
++                    footer_row.children = sort_after(footer_row.children)
 +                self._footer_paginate = bool(
 +                    evaluate_strict(getattr(self.footer.extra, 'paginate', False), table=self)
 +                )
@@ -186,13 +187,13 @@ index eb48953d..c777d5eb 100644
 +                target_fragment.children.text = _Lazy_tfoot(self)
 +                target_fragment.children = sort_after(target_fragment.children)
 +                self.footer.include = True
-+            else:
-+                self.footer.include = False
++        # Store whether footer exists so template can check (public name for template access)
++        self.has_footer = has_footer
 +
          bind_member(self, name='container')
          bind_member(self, name='table_tag_wrapper')
          bind_member(self, name='outer')
-@@ -2506,13 +2598,15 @@ def cells_for_rows(self, paginate=True):
+@@ -2506,13 +2599,15 @@ def cells_for_rows(self, paginate=True):
              rows = self.get_visible_rows()
          else:
              rows = self.sorted_and_filtered_rows
@@ -211,7 +212,7 @@ index eb48953d..c777d5eb 100644
              row = self.invoke_callback(self.preprocess_row, row=row)
              assert row is not None, 'preprocess_row must return the row'
  
-@@ -2527,6 +2621,128 @@ def cells_for_rows(self, paginate=True):
+@@ -2527,6 +2622,128 @@ def cells_for_rows(self, paginate=True):
              # noinspection PyCallingNonCallable
              yield self.cells_class(row=row, row_index=i, **self.row.as_dict()).bind(parent=self)
  
@@ -341,14 +342,14 @@ index eb48953d..c777d5eb 100644
      @dispatch()
      def columns_from_model(cls, **kwargs):
 diff --git a/iommi/templates/iommi/table/table_tag.html b/iommi/templates/iommi/table/table_tag.html
-index 36d8049c..e56a0a1a 100644
+index 36d8049c..d476a3a1 100644
 --- a/iommi/templates/iommi/table/table_tag.html
 +++ b/iommi/templates/iommi/table/table_tag.html
 @@ -12,6 +12,8 @@
  
              {{ table.tbody }}
  
-+            {{ table.footer }}
++            {% if table.has_footer %}{{ table.footer }}{% endif %}
 +
          {{ table.iommi_close_tag }}
          {{ table.table_tag_wrapper.iommi_close_tag }}

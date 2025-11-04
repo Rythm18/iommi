@@ -2309,13 +2309,14 @@ class Table(Part, Tag):
         self.tbody.children = sort_after(self.tbody.children)
 
         self._footer_paginate = False
-        bind_member(self, name='footer')
-        if getattr(self, 'footer', None):
-            self.footer.children = sort_after(self.footer.children)
-            footer_row = getattr(self.footer.children, 'row', None)
-            if footer_row:
-                footer_row.children = sort_after(footer_row.children)
-            if self._has_footer_columns():
+        has_footer = self._has_footer_columns()
+        if has_footer:
+            bind_member(self, name='footer')
+            if getattr(self, 'footer', None):
+                self.footer.children = sort_after(self.footer.children)
+                footer_row = getattr(self.footer.children, 'row', None)
+                if footer_row:
+                    footer_row.children = sort_after(footer_row.children)
                 self._footer_paginate = bool(
                     evaluate_strict(getattr(self.footer.extra, 'paginate', False), table=self)
                 )
@@ -2323,8 +2324,8 @@ class Table(Part, Tag):
                 target_fragment.children.text = _Lazy_tfoot(self)
                 target_fragment.children = sort_after(target_fragment.children)
                 self.footer.include = True
-            else:
-                self.footer.include = False
+        # Store whether footer exists so template can check (public name for template access)
+        self.has_footer = has_footer
 
         bind_member(self, name='container')
         bind_member(self, name='table_tag_wrapper')

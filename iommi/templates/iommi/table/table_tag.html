@@ -12,7 +12,7 @@
 
             {{ table.tbody }}
 
-            {{ table.footer }}
+            {% if table.has_footer %}{{ table.footer }}{% endif %}
 
         {{ table.iommi_close_tag }}
         {{ table.table_tag_wrapper.iommi_close_tag }}
