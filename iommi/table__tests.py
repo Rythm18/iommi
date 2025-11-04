@@ -2369,8 +2369,6 @@ def test_ajax_endpoint_empty_response():
     assert actual == []
 
 
-
-
 def test_builtin_data_endpoint_simple_rows():
     class SimpleTable(Table):
         foo = Column()
