@@ -2385,6 +2385,8 @@ def test_builtin_data_endpoint_simple_rows():
     for column in payload['columns']:
         assert set(column.keys()) >= {'name', 'display_name', 'value_key', 'csv_whitelisted'}
 
+    assert all(column['csv_whitelisted'] is False for column in payload['columns'])
+
     assert payload['rows'] == [
         {'foo': '1', 'bar': '2'},
         {'foo': '3', 'bar': '4'},
@@ -2426,6 +2428,7 @@ def test_builtin_data_endpoint_queryset_pagination_and_metadata():
     columns = payload['columns']
     assert [column['name'] for column in columns] == ['a', 'b']
     assert columns[0]['csv_whitelisted'] is True
+    assert columns[1]['csv_whitelisted'] is False
 
     paginator = payload['paginator']
     assert paginator == {
@@ -2465,6 +2468,27 @@ def test_builtin_data_endpoint_respects_filters_and_includes():
     assert [column['name'] for column in payload['columns']] == ['b']
     assert payload['rows'] == [{'b': 'hello'}]
     assert payload['query'] == {'b': 'hello'}
+
+
+def test_builtin_data_endpoint_value_key_with_custom_attr():
+    table = Table(
+        rows=[Struct(a=Struct(value=7), title='Seven')],
+        columns__name=Column(attr='title'),
+        columns__custom=Column(attr='a__value'),
+    )
+
+    payload = perform_ajax_dispatch(root=table.bind(request=req('get')), path='/data', value='')
+
+    assert [column['value_key'] for column in payload['columns']] == ['name', 'custom']
+    assert payload['rows'] == [{'name': 'Seven', 'custom': '7'}]
+
+
+def test_builtin_data_endpoint_endpoint_registered():
+    table = Table(rows=[])
+    bound_table = table.bind(request=req('get'))
+
+    assert 'data' in bound_table.endpoints
+    assert callable(bound_table.endpoints.data.func)
 
 
 def test_ajax_data_endpoint():

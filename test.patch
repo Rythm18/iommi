@@ -1,8 +1,8 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 1a3f5647..5ddfe7b0 100644
+index 360cd54b634c..1a2b3c4d5e6f 100644
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
-@@ -2369,6 +2369,103 @@ def endpoints__foo__func(**_):
+@@ -2369,6 +2369,127 @@
      assert actual == []
  
  
@@ -21,6 +21,8 @@ index 1a3f5647..5ddfe7b0 100644
 +    assert [column['value_key'] for column in payload['columns']] == ['foo', 'bar']
 +    for column in payload['columns']:
 +        assert set(column.keys()) >= {'name', 'display_name', 'value_key', 'csv_whitelisted'}
++
++    assert all(column['csv_whitelisted'] is False for column in payload['columns'])
 +
 +    assert payload['rows'] == [
 +        {'foo': '1', 'bar': '2'},
@@ -63,6 +65,7 @@ index 1a3f5647..5ddfe7b0 100644
 +    columns = payload['columns']
 +    assert [column['name'] for column in columns] == ['a', 'b']
 +    assert columns[0]['csv_whitelisted'] is True
++    assert columns[1]['csv_whitelisted'] is False
 +
 +    paginator = payload['paginator']
 +    assert paginator == {
@@ -103,6 +106,27 @@ index 1a3f5647..5ddfe7b0 100644
 +    assert payload['rows'] == [{'b': 'hello'}]
 +    assert payload['query'] == {'b': 'hello'}
 +
++
++def test_builtin_data_endpoint_value_key_with_custom_attr():
++    table = Table(
++        rows=[Struct(a=Struct(value=7), title='Seven')],
++        columns__name=Column(attr='title'),
++        columns__custom=Column(attr='a__value'),
++    )
++
++    payload = perform_ajax_dispatch(root=table.bind(request=req('get')), path='/data', value='')
++
++    assert [column['value_key'] for column in payload['columns']] == ['name', 'custom']
++    assert payload['rows'] == [{'name': 'Seven', 'custom': '7'}]
++
++
++def test_builtin_data_endpoint_endpoint_registered():
++    table = Table(rows=[])
++    bound_table = table.bind(request=req('get'))
++
++    assert 'data' in bound_table.endpoints
++    assert callable(bound_table.endpoints.data.func)
++
  
  def test_ajax_data_endpoint():
      class TestTable(Table):
@@ -132,4 +156,3 @@ index 00000000..27076ab2
 +    exit 1
 +    ;;
 +esac
-
