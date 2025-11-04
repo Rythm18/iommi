@@ -1,8 +1,8 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 25c9f15118f1..7ec846074d49 100755
+index 25c9f15118f1..7ec846074d49 100644
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
-@@ -2369,6 +2369,130 @@
+@@ -2369,6 +2369,130 @@ def endpoints__foo__func(**_):
      assert actual == []
  
  
@@ -137,17 +137,7 @@ diff --git a/test.sh b/test.sh
 index 74f43f320db4..59842a8c60aa 100644
 --- a/test.sh
 +++ b/test.sh
-@@ -1,20 +1,22 @@
- #!/bin/bash
- set -e
- 
- case "$1" in
-   base)
-     # Run existing test suite; should pass on the base commit
-     pytest tests docs
-     ;;
-   new)
-     # Run only the newly added tests; expected to fail before implementing the feature
+@@ -11,7 +11,9 @@ case "$1" in
      pytest \
        iommi/table__tests.py::test_builtin_data_endpoint_simple_rows \
        iommi/table__tests.py::test_builtin_data_endpoint_queryset_pagination_and_metadata \
@@ -158,7 +148,4 @@ index 74f43f320db4..59842a8c60aa 100644
      ;;
    *)
      echo "Usage: ./test.sh {base|new}"
-     exit 1
-     ;;
- esac
 
