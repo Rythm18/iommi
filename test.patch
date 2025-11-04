@@ -1,79 +1,8 @@
-diff --git a/tmp/base/.git/COMMIT_EDITMSG b/tmp/updated/.git/COMMIT_EDITMSG
-index df967b96..519c15ed 100644
---- a/tmp/base/.git/COMMIT_EDITMSG
-+++ b/tmp/updated/.git/COMMIT_EDITMSG
-@@ -1 +1 @@
--base
-+updated
-diff --git a/tmp/base/.git/index b/tmp/updated/.git/index
-index 5cf3c583..583a6e97 100644
-Binary files a/tmp/base/.git/index and b/tmp/updated/.git/index differ
-diff --git a/tmp/base/.git/logs/HEAD b/tmp/updated/.git/logs/HEAD
-index 9490ee76..6e3ecde7 100644
---- a/tmp/base/.git/logs/HEAD
-+++ b/tmp/updated/.git/logs/HEAD
-@@ -1 +1 @@
--0000000000000000000000000000000000000000 1d763962ef0fe7641ef030686583a735d048e3fb foo <foo@bar> 1762256222 +0000	commit (initial): base
-+0000000000000000000000000000000000000000 fc6d514e153d389a69bda4a9848c11110428f1ef foo <foo@bar> 1762256253 +0000	commit (initial): updated
-diff --git a/tmp/base/.git/logs/refs/heads/master b/tmp/updated/.git/logs/refs/heads/master
-index 9490ee76..6e3ecde7 100644
---- a/tmp/base/.git/logs/refs/heads/master
-+++ b/tmp/updated/.git/logs/refs/heads/master
-@@ -1 +1 @@
--0000000000000000000000000000000000000000 1d763962ef0fe7641ef030686583a735d048e3fb foo <foo@bar> 1762256222 +0000	commit (initial): base
-+0000000000000000000000000000000000000000 fc6d514e153d389a69bda4a9848c11110428f1ef foo <foo@bar> 1762256253 +0000	commit (initial): updated
-diff --git a/tmp/updated/.git/objects/12/46e3a8516bbe4cb9fda30c107ddd1bf44a9bc9 b/tmp/updated/.git/objects/12/46e3a8516bbe4cb9fda30c107ddd1bf44a9bc9
-new file mode 100644
-index 00000000..9000434e
-Binary files /dev/null and b/tmp/updated/.git/objects/12/46e3a8516bbe4cb9fda30c107ddd1bf44a9bc9 differ
-diff --git a/tmp/base/.git/objects/1a/3f564754ecb24365d0350360f3d903d6e85baf b/tmp/base/.git/objects/1a/3f564754ecb24365d0350360f3d903d6e85baf
-deleted file mode 100644
-index 6a4fe81e..00000000
-Binary files a/tmp/base/.git/objects/1a/3f564754ecb24365d0350360f3d903d6e85baf and /dev/null differ
-diff --git a/tmp/base/.git/objects/1d/763962ef0fe7641ef030686583a735d048e3fb b/tmp/base/.git/objects/1d/763962ef0fe7641ef030686583a735d048e3fb
-deleted file mode 100644
-index 870465aa..00000000
-Binary files a/tmp/base/.git/objects/1d/763962ef0fe7641ef030686583a735d048e3fb and /dev/null differ
-diff --git a/tmp/base/.git/objects/27/076ab2884d517c181f16d885bff08c8ad37e2a b/tmp/base/.git/objects/27/076ab2884d517c181f16d885bff08c8ad37e2a
-deleted file mode 100644
-index b6bbfe15..00000000
-Binary files a/tmp/base/.git/objects/27/076ab2884d517c181f16d885bff08c8ad37e2a and /dev/null differ
-diff --git a/tmp/updated/.git/objects/2c/9243a9d56b01fe47a83398ffe5736dcb680e10 b/tmp/updated/.git/objects/2c/9243a9d56b01fe47a83398ffe5736dcb680e10
-new file mode 100644
-index 00000000..2c563e52
-Binary files /dev/null and b/tmp/updated/.git/objects/2c/9243a9d56b01fe47a83398ffe5736dcb680e10 differ
-diff --git a/tmp/updated/.git/objects/98/6bc45ac04472b77b97a2484b5e375ba258c669 b/tmp/updated/.git/objects/98/6bc45ac04472b77b97a2484b5e375ba258c669
-new file mode 100644
-index 00000000..80b5414d
-Binary files /dev/null and b/tmp/updated/.git/objects/98/6bc45ac04472b77b97a2484b5e375ba258c669 differ
-diff --git a/tmp/base/.git/objects/d4/a74478cbd8f8bcff1d42681488f2c599bf8eb7 b/tmp/base/.git/objects/d4/a74478cbd8f8bcff1d42681488f2c599bf8eb7
-deleted file mode 100644
-index 96609ec9..00000000
-Binary files a/tmp/base/.git/objects/d4/a74478cbd8f8bcff1d42681488f2c599bf8eb7 and /dev/null differ
-diff --git a/tmp/base/.git/objects/d9/0a20f61b5c79758da14a89413a18ceb49591c7 b/tmp/base/.git/objects/d9/0a20f61b5c79758da14a89413a18ceb49591c7
-deleted file mode 100644
-index 32f3a5da..00000000
-Binary files a/tmp/base/.git/objects/d9/0a20f61b5c79758da14a89413a18ceb49591c7 and /dev/null differ
-diff --git a/tmp/updated/.git/objects/e1/11c61e94148de4a6e03f0796450c5b88836abb b/tmp/updated/.git/objects/e1/11c61e94148de4a6e03f0796450c5b88836abb
-new file mode 100644
-index 00000000..bf5c8f8a
-Binary files /dev/null and b/tmp/updated/.git/objects/e1/11c61e94148de4a6e03f0796450c5b88836abb differ
-diff --git a/tmp/updated/.git/objects/fc/6d514e153d389a69bda4a9848c11110428f1ef b/tmp/updated/.git/objects/fc/6d514e153d389a69bda4a9848c11110428f1ef
-new file mode 100644
-index 00000000..8035c8b3
-Binary files /dev/null and b/tmp/updated/.git/objects/fc/6d514e153d389a69bda4a9848c11110428f1ef differ
-diff --git a/tmp/base/.git/refs/heads/master b/tmp/updated/.git/refs/heads/master
-index d1071753..ac0202d7 100644
---- a/tmp/base/.git/refs/heads/master
-+++ b/tmp/updated/.git/refs/heads/master
-@@ -1 +1 @@
--1d763962ef0fe7641ef030686583a735d048e3fb
-+fc6d514e153d389a69bda4a9848c11110428f1ef
-diff --git a/tmp/base/iommi/table__tests.py b/tmp/updated/iommi/table__tests.py
-index 1a3f5647..1246e3a8 100644
---- a/tmp/base/iommi/table__tests.py
-+++ b/tmp/updated/iommi/table__tests.py
-@@ -2369,6 +2369,130 @@ def endpoints__foo__func(**_):
+diff --git a/iommi/table__tests.py b/iommi/table__tests.py
+index 6f0401b6c339..1246e3a8516b 100644
+--- a/iommi/table__tests.py
++++ b/iommi/table__tests.py
+@@ -2369,6 +2369,131 @@ def endpoints__foo__func(**_):
      assert actual == []
  
  
@@ -201,21 +130,35 @@ index 1a3f5647..1246e3a8 100644
 +    assert payload['query'] == {}
 +    assert payload['paginator']['page'] == 1
 +
- 
++
  def test_ajax_data_endpoint():
      class TestTable(Table):
-diff --git a/tmp/base/test.sh b/tmp/updated/test.sh
-index 27076ab2..e111c61e 100644
---- a/tmp/base/test.sh
-+++ b/tmp/updated/test.sh
-@@ -11,7 +11,9 @@ case "$1" in
-     pytest \
-       iommi/table__tests.py::test_builtin_data_endpoint_simple_rows \
-       iommi/table__tests.py::test_builtin_data_endpoint_queryset_pagination_and_metadata \
--      iommi/table__tests.py::test_builtin_data_endpoint_respects_filters_and_includes
+         class Meta:
+diff --git a/test.sh b/test.sh
+new file mode 100755
+index 0000000..9cc633800114 100755
+--- /dev/null
++++ b/test.sh
+@@ -0,0 +1,22 @@
++#!/bin/bash
++set -e
++
++case "$1" in
++  base)
++    # Run existing test suite; should pass on the base commit
++    pytest tests docs
++    ;;
++  new)
++    # Run only the newly added tests; expected to fail before implementing the feature
++    pytest \
++      iommi/table__tests.py::test_builtin_data_endpoint_simple_rows \
++      iommi/table__tests.py::test_builtin_data_endpoint_queryset_pagination_and_metadata \
 +      iommi/table__tests.py::test_builtin_data_endpoint_respects_filters_and_includes \
 +      iommi/table__tests.py::test_builtin_data_endpoint_value_key_with_custom_attr \
 +      iommi/table__tests.py::test_builtin_data_endpoint_available_on_plain_table
-     ;;
-   *)
-     echo "Usage: ./test.sh {base|new}"
++    ;;
++  *)
++    echo "Usage: ./test.sh {base|new}"
++    exit 1
++    ;;
++ esac
