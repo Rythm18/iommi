@@ -1,5 +1,5 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 360cd54b634c..1a2b3c4d5e6f 100644
+index 25c9f15118f1..7ec846074d49 100755
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
 @@ -2369,6 +2369,130 @@
@@ -134,7 +134,7 @@ index 360cd54b634c..1a2b3c4d5e6f 100644
  def test_ajax_data_endpoint():
      class TestTable(Table):
 diff --git a/test.sh b/test.sh
-index 27076ab293b1..5a6b7c8d9e0f 100755
+index 74f43f320db4..59842a8c60aa 100644
 --- a/test.sh
 +++ b/test.sh
 @@ -11,7 +11,9 @@
@@ -148,3 +148,4 @@ index 27076ab293b1..5a6b7c8d9e0f 100755
      ;;
    *)
      echo "Usage: ./test.sh {base|new}"
+
