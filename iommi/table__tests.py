@@ -585,12 +585,14 @@ def test_table_footer_tag_and_attrs():
     table = CustomFooterTable(rows=rows)
     html = table.bind(request=req('get')).__html__()
     soup = BeautifulSoup(html, 'html.parser')
+    
+    # Verify tfoot comes after tbody in document order by checking string positions
+    tbody_pos = html.find('<tbody')
+    tfoot_pos = html.find('<tfoot')
+    assert tbody_pos >= 0 and tfoot_pos >= 0, "Both tbody and tfoot should be present"
+    assert tfoot_pos > tbody_pos, "tfoot should appear after tbody in HTML"
+    
     tfoot = soup.find('tfoot')
-    tbody = soup.find('tbody')
-    
-    # Verify tfoot comes after tbody in document order
-    assert tfoot.sourceline > tbody.sourceline
-    
     footer_row = tfoot.find('tr')
     
     # Verify footer__tag changes td to th
