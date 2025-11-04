@@ -1,5 +1,5 @@
 diff --git a/iommi/table.py b/iommi/table.py
-index eb48953d..484faef0 100644
+index eb48953d..29eac7f3 100644
 --- a/iommi/table.py
 +++ b/iommi/table.py
 @@ -311,6 +311,47 @@ def default_cell_formatter(table: 'Table', column: 'Column', row, value, **_):
@@ -121,21 +121,6 @@ index eb48953d..484faef0 100644
  
      @staticmethod
      @refinable
-@@ -1897,10 +1960,10 @@ def post_bulk_edit(table, queryset, updates, **_):
-         bulk_exclude={},
-         sortable=True,
-         default_sort_order=None,
--        template='iommi/table/table.html',
--        tbody__call_target=Fragment,
--        tbody__tag='tbody',
--        container__tag='div',
-+          template='iommi/table/table.html',
-+          tbody__call_target=Fragment,
-+          tbody__tag='tbody',
-+          container__tag='div',
-         container__attrs__class={'iommi-table-container': True},
-         container__children__text__template='iommi/table/table_container.html',
-         container__call_target=Fragment,
 @@ -1999,7 +2062,7 @@ def on_refine_done(self):
          self.initial_rows = self.rows
          self.header = HeaderConfig(_name='header', **self.header).refine_done(parent=self)
