@@ -1,5 +1,5 @@
 diff --git a/iommi/table.py b/iommi/table.py
-index eb48953d..d08082a2 100644
+index eb48953d..484faef0 100644
 --- a/iommi/table.py
 +++ b/iommi/table.py
 @@ -311,6 +311,47 @@ def default_cell_formatter(table: 'Table', column: 'Column', row, value, **_):
@@ -121,7 +121,7 @@ index eb48953d..d08082a2 100644
  
      @staticmethod
      @refinable
-@@ -1897,10 +1960,16 @@ def post_bulk_edit(table, queryset, updates, **_):
+@@ -1897,10 +1960,10 @@ def post_bulk_edit(table, queryset, updates, **_):
          bulk_exclude={},
          sortable=True,
          default_sort_order=None,
@@ -132,17 +132,11 @@ index eb48953d..d08082a2 100644
 +          template='iommi/table/table.html',
 +          tbody__call_target=Fragment,
 +          tbody__tag='tbody',
-+          footer__call_target=Fragment,
-+          footer__tag='tfoot',
-+          footer__children__row__call_target=Fragment,
-+          footer__children__row__tag='tr',
-+          footer__children__row__attrs=EMPTY,
-+          footer__extra__paginate=False,
 +          container__tag='div',
          container__attrs__class={'iommi-table-container': True},
          container__children__text__template='iommi/table/table_container.html',
          container__call_target=Fragment,
-@@ -1999,7 +2068,7 @@ def on_refine_done(self):
+@@ -1999,7 +2062,7 @@ def on_refine_done(self):
          self.initial_rows = self.rows
          self.header = HeaderConfig(_name='header', **self.header).refine_done(parent=self)
          self.row = RowConfig(**self.row).refine_done(parent=self)
@@ -151,16 +145,7 @@ index eb48953d..d08082a2 100644
  
          # In bind initial_rows will be used to set these 3 (in that order)
          self.sorted_rows = None
-@@ -2203,6 +2272,8 @@ def add_hidden_all_pks_field(declared_bulk_fields):
- 
-         # noinspection PyCallingNonCallable
-         self.tbody = self.tbody(_name='tbody').refine_done(parent=self)
-+        # noinspection PyCallingNonCallable
-+        self.footer = self.footer(_name='footer').refine_done(parent=self)
- 
-         super(Table, self).on_refine_done()
- 
-@@ -2230,10 +2301,32 @@ def on_bind(self) -> None:
+@@ -2230,10 +2293,44 @@ def on_bind(self) -> None:
          self.title = evaluate_strict(self.title, **self.iommi_evaluate_parameters())
          build_and_bind_h_tag(self)
  
@@ -174,26 +159,38 @@ index eb48953d..d08082a2 100644
 +        self._footer_paginate = False
 +        has_footer = self._has_footer_columns()
 +        if has_footer:
++            # Create and refine footer only when needed, using any footer config from init
++            from iommi.fragment import Fragment as FragmentClass
++            footer_config = getattr(self, 'footer', Namespace())
++            self.footer = FragmentClass(
++                **footer_config,
++                _name='footer',
++                tag=footer_config.get('tag', 'tfoot'),
++                children__row=FragmentClass(
++                    tag='tr',
++                    attrs=EMPTY,
++                ),
++            ).refine_done(parent=self)
++            
 +            bind_member(self, name='footer')
-+            if getattr(self, 'footer', None):
-+                self.footer.children = sort_after(self.footer.children)
-+                footer_row = getattr(self.footer.children, 'row', None)
-+                if footer_row:
-+                    footer_row.children = sort_after(footer_row.children)
-+                self._footer_paginate = bool(
-+                    evaluate_strict(getattr(self.footer.extra, 'paginate', False), table=self)
-+                )
-+                target_fragment = footer_row if footer_row else self.footer
-+                target_fragment.children.text = _Lazy_tfoot(self)
-+                target_fragment.children = sort_after(target_fragment.children)
-+                self.footer.include = True
++            self.footer.children = sort_after(self.footer.children)
++            footer_row = getattr(self.footer.children, 'row', None)
++            if footer_row:
++                footer_row.children = sort_after(footer_row.children)
++            self._footer_paginate = bool(
++                evaluate_strict(getattr(self.footer.extra, 'paginate', False), table=self)
++            )
++            target_fragment = footer_row if footer_row else self.footer
++            target_fragment.children.text = _Lazy_tfoot(self)
++            target_fragment.children = sort_after(target_fragment.children)
++            self.footer.include = True
 +        # Store whether footer exists so template can check (public name for template access)
 +        self.has_footer = has_footer
 +
          bind_member(self, name='container')
          bind_member(self, name='table_tag_wrapper')
          bind_member(self, name='outer')
-@@ -2506,13 +2599,15 @@ def cells_for_rows(self, paginate=True):
+@@ -2506,13 +2603,15 @@ def cells_for_rows(self, paginate=True):
              rows = self.get_visible_rows()
          else:
              rows = self.sorted_and_filtered_rows
@@ -212,7 +209,7 @@ index eb48953d..d08082a2 100644
              row = self.invoke_callback(self.preprocess_row, row=row)
              assert row is not None, 'preprocess_row must return the row'
  
-@@ -2527,6 +2622,128 @@ def cells_for_rows(self, paginate=True):
+@@ -2527,6 +2626,128 @@ def cells_for_rows(self, paginate=True):
              # noinspection PyCallingNonCallable
              yield self.cells_class(row=row, row_index=i, **self.row.as_dict()).bind(parent=self)
  

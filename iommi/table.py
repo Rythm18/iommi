@@ -1963,12 +1963,6 @@ class Table(Part, Tag):
           template='iommi/table/table.html',
           tbody__call_target=Fragment,
           tbody__tag='tbody',
-          footer__call_target=Fragment,
-          footer__tag='tfoot',
-          footer__children__row__call_target=Fragment,
-          footer__children__row__tag='tr',
-          footer__children__row__attrs=EMPTY,
-          footer__extra__paginate=False,
           container__tag='div',
         container__attrs__class={'iommi-table-container': True},
         container__children__text__template='iommi/table/table_container.html',
@@ -2272,8 +2266,6 @@ class Table(Part, Tag):
 
         # noinspection PyCallingNonCallable
         self.tbody = self.tbody(_name='tbody').refine_done(parent=self)
-        # noinspection PyCallingNonCallable
-        self.footer = self.footer(_name='footer').refine_done(parent=self)
 
         super(Table, self).on_refine_done()
 
@@ -2311,19 +2303,31 @@ class Table(Part, Tag):
         self._footer_paginate = False
         has_footer = self._has_footer_columns()
         if has_footer:
+            # Create and refine footer only when needed, using any footer config from init
+            from iommi.fragment import Fragment as FragmentClass
+            footer_config = getattr(self, 'footer', Namespace())
+            self.footer = FragmentClass(
+                **footer_config,
+                _name='footer',
+                tag=footer_config.get('tag', 'tfoot'),
+                children__row=FragmentClass(
+                    tag='tr',
+                    attrs=EMPTY,
+                ),
+            ).refine_done(parent=self)
+            
             bind_member(self, name='footer')
-            if getattr(self, 'footer', None):
-                self.footer.children = sort_after(self.footer.children)
-                footer_row = getattr(self.footer.children, 'row', None)
-                if footer_row:
-                    footer_row.children = sort_after(footer_row.children)
-                self._footer_paginate = bool(
-                    evaluate_strict(getattr(self.footer.extra, 'paginate', False), table=self)
-                )
-                target_fragment = footer_row if footer_row else self.footer
-                target_fragment.children.text = _Lazy_tfoot(self)
-                target_fragment.children = sort_after(target_fragment.children)
-                self.footer.include = True
+            self.footer.children = sort_after(self.footer.children)
+            footer_row = getattr(self.footer.children, 'row', None)
+            if footer_row:
+                footer_row.children = sort_after(footer_row.children)
+            self._footer_paginate = bool(
+                evaluate_strict(getattr(self.footer.extra, 'paginate', False), table=self)
+            )
+            target_fragment = footer_row if footer_row else self.footer
+            target_fragment.children.text = _Lazy_tfoot(self)
+            target_fragment.children = sort_after(target_fragment.children)
+            self.footer.include = True
         # Store whether footer exists so template can check (public name for template access)
         self.has_footer = has_footer
 
