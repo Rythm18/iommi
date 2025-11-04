@@ -1,25 +1,140 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 3056177d..800aed33 100755
+index 6f0401b6..800aed33 100755
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
-@@ -479,7 +479,9 @@ class Meta:
-     bound_table = table.bind(request=req('get'))
-     html = bound_table.__html__()
-     soup = BeautifulSoup(html, 'html.parser')
--    footer_cells = soup.find('tfoot').find_all('td')
+@@ -8,6 +8,7 @@ from datetime import (
+     time,
+ )
+ from textwrap import dedent
+ from urllib.parse import urlencode
+ 
++from bs4 import BeautifulSoup
+ import pytest
+ from django.db.models import (
+     F,
+@@ -378,6 +379,125 @@ def test_generator():
+     )
+ 
+ 
++def test_table_column_footer_aggregations():
++    rows = [
++        Struct(item='Widget', quantity=2, price=10.0),
++        Struct(item='Gadget', quantity=4, price=5.0),
++        Struct(item='Doodad', quantity=0, price=None),
++    ]
++
++    class SummaryTable(Table):
++        item = Column(
++            footer__include=True,
++            footer__value=lambda **_: mark_safe('<strong>Totals</strong>'),
++            footer__format=lambda value, **_: value,
++            group='Summary',
++        )
++        quantity = Column.integer(
++            attr='quantity',
++            footer__include=True,
++            footer__aggregation='sum',
++            group='Metrics',
++        )
++        price = Column.number(
++            attr='price',
++            footer__include=True,
++            footer__aggregation='avg',
++            footer__format=lambda value, **_: f'{value:.1f}' if value is not None else '',
++            group='Metrics',
++        )
++
++    table = SummaryTable(rows=rows)
++    html = table.bind(request=req('get')).__html__()
++    soup = BeautifulSoup(html, 'html.parser')
++    footer = soup.find('tfoot')
++    assert footer is not None
++    footer_cells = footer.find_all('td')
++
++    assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '6', '7.5']
++    assert '<strong>Totals</strong>' in str(footer_cells[0])
++
++
++def test_table_footer_pagination_scope():
++    rows = [
++        Struct(name='A', quantity=2),
++        Struct(name='B', quantity=3),
++        Struct(name='C', quantity=5),
++    ]
++
++    class PaginatedFooterTable(Table):
++        class Meta:
++            page_size = 2
++
++        name = Column(
++            footer__include=True,
++            footer__value='Totals',
++        )
++        quantity_total = Column.integer(
++            attr='quantity',
++            footer__include=True,
++            footer__aggregation='sum',
++        )
++        quantity_visible = Column.integer(
++            attr='quantity',
++            footer__include=True,
++            footer__aggregation='sum',
++            footer__use_visible_rows=True,
++        )
++
++    table = PaginatedFooterTable(rows=rows)
++    bound_table = table.bind(request=req('get'))
++    html = bound_table.__html__()
++    soup = BeautifulSoup(html, 'html.parser')
++    footer_cells = soup.find('tfoot').find_all('td')
++
++    assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '10', '5']
++
++
++def test_table_footer_table_default_paginate():
++    rows = [
++        Struct(name='A', quantity=2),
++        Struct(name='B', quantity=3),
++        Struct(name='C', quantity=5),
++    ]
++
++    class DefaultPaginateTable(Table):
++        class Meta:
++            page_size = 2
++
++        name = Column(
++            footer__include=True,
++            footer__value='Totals',
++        )
++        quantity = Column.integer(
++            attr='quantity',
++            footer__include=True,
++            footer__aggregation='sum',
++        )
++
++    table = DefaultPaginateTable(rows=rows, footer__extra__paginate=True)
++    bound_table = table.bind(request=req('get'))
++    html = bound_table.__html__()
++    soup = BeautifulSoup(html, 'html.parser')
 +    tfoot = soup.find('tfoot')
 +    assert tfoot is not None
 +    footer_cells = tfoot.find_all('td')
- 
-     assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '5']
- 
++
++    assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '5']
++
++
+ @pytest.fixture
+ def NoSortTable():  # noqa: N802
+     class NoSortTable(Table):
+         class Meta:
+             sortable = False
 diff --git a/test.sh b/test.sh
-index 4e73ad50..99dd5961 100755
---- a/test.sh
+new file mode 100755
+index 00000000..99dd5961
+--- /dev/null
 +++ b/test.sh
-@@ -1,5 +1,14 @@
- #!/bin/bash
--set -e
+@@ -0,0 +1,28 @@
++#!/bin/bash
 +set -euo pipefail
 +
 +usage() {
@@ -30,15 +145,20 @@ index 4e73ad50..99dd5961 100755
 +if [ "$#" -ne 1 ]; then
 +  usage
 +fi
- 
- case "$1" in
-   base)
-@@ -14,7 +23,6 @@ case "$1" in
-       iommi/table__tests.py::test_table_footer_table_default_paginate
-     ;;
-   *)
--    echo "Usage: ./test.sh {base|new}"
--    exit 1
++
++case "$1" in
++  base)
++    # Run existing test suite; should pass on the base commit
++    python3 -m pytest tests docs
++    ;;
++  new)
++    # Run only the newly added tests; expected to fail before implementing the feature
++    python3 -m pytest \
++      iommi/table__tests.py::test_table_column_footer_aggregations \
++      iommi/table__tests.py::test_table_footer_pagination_scope \
++      iommi/table__tests.py::test_table_footer_table_default_paginate
++    ;;
++  *)
 +    usage
-     ;;
- esac
++    ;;
++esac
