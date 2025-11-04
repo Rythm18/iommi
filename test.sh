@@ -13,7 +13,14 @@ fi
 case "$1" in
   base)
     # Run existing test suite; should pass on the base commit
-    python3 -m pytest
+    # Explicitly exclude the newly added tests to ensure distinct test sets
+    python3 -m pytest \
+      --deselect=iommi/table__tests.py::test_table_column_footer_aggregations \
+      --deselect=iommi/table__tests.py::test_table_footer_pagination_scope \
+      --deselect=iommi/table__tests.py::test_table_footer_table_default_paginate \
+      --deselect=iommi/table__tests.py::test_table_footer_callable_kwargs \
+      --deselect=iommi/table__tests.py::test_table_footer_sum_ignores_none \
+      --deselect=iommi/table__tests.py::test_table_footer_tag_and_attrs
     ;;
   new)
     # Run only the newly added tests; expected to fail before implementing the feature
@@ -22,6 +29,7 @@ case "$1" in
       iommi/table__tests.py::test_table_footer_pagination_scope \
       iommi/table__tests.py::test_table_footer_table_default_paginate \
       iommi/table__tests.py::test_table_footer_callable_kwargs \
+      iommi/table__tests.py::test_table_footer_sum_ignores_none \
       iommi/table__tests.py::test_table_footer_tag_and_attrs
     ;;
   *)

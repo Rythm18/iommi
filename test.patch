@@ -1,5 +1,5 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 6f0401b6..a58ab852 100755
+index 6f0401b6..d6e903c0 100755
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
 @@ -8,6 +8,7 @@
@@ -10,7 +10,7 @@ index 6f0401b6..a58ab852 100755
  import pytest
  from django.db.models import (
      F,
-@@ -378,6 +379,199 @@ class TestTable(Table):
+@@ -378,6 +379,231 @@ class TestTable(Table):
      )
  
  
@@ -166,8 +166,34 @@ index 6f0401b6..a58ab852 100755
 +    # Verify footer__format callable received expected kwargs
 +    assert 'table' in captured_format_kwargs
 +    assert 'column' in captured_format_kwargs
++    assert 'values' in captured_format_kwargs
++    assert 'rows' in captured_format_kwargs
 +    # Verify value was passed as positional argument (not in kwargs)
 +    assert captured_format_value == 10
++
++
++def test_table_footer_sum_ignores_none():
++    rows = [
++        Struct(name='A', value=10),
++        Struct(name='B', value=None),
++        Struct(name='C', value=20),
++        Struct(name='D', value=None),
++    ]
++
++    class SumWithNoneTable(Table):
++        name = Column()
++        value = Column.integer(
++            footer__include=True,
++            footer__aggregation='sum',
++        )
++
++    table = SumWithNoneTable(rows=rows)
++    html = table.bind(request=req('get')).__html__()
++    soup = BeautifulSoup(html, 'html.parser')
++    footer_cells = soup.find('tfoot').find_all('td')
++    
++    # Sum should be 30 (10 + 20), ignoring None values
++    assert footer_cells[1].get_text(strip=True) == '30'
 +
 +
 +def test_table_footer_tag_and_attrs():
@@ -194,7 +220,13 @@ index 6f0401b6..a58ab852 100755
 +    table = CustomFooterTable(rows=rows)
 +    html = table.bind(request=req('get')).__html__()
 +    soup = BeautifulSoup(html, 'html.parser')
-+    footer_row = soup.find('tfoot').find('tr')
++    tfoot = soup.find('tfoot')
++    tbody = soup.find('tbody')
++    
++    # Verify tfoot comes after tbody in document order
++    assert tfoot.sourceline > tbody.sourceline
++    
++    footer_row = tfoot.find('tr')
 +    
 +    # Verify footer__tag changes td to th
 +    first_cell = footer_row.find('th')
@@ -212,10 +244,10 @@ index 6f0401b6..a58ab852 100755
      class NoSortTable(Table):
 diff --git a/test.sh b/test.sh
 new file mode 100755
-index 00000000..a40cfd76
+index 00000000..8bf48648
 --- /dev/null
 +++ b/test.sh
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,38 @@
 +#!/bin/bash
 +set -euo pipefail
 +
@@ -231,7 +263,14 @@ index 00000000..a40cfd76
 +case "$1" in
 +  base)
 +    # Run existing test suite; should pass on the base commit
-+    python3 -m pytest
++    # Explicitly exclude the newly added tests to ensure distinct test sets
++    python3 -m pytest \
++      --deselect=iommi/table__tests.py::test_table_column_footer_aggregations \
++      --deselect=iommi/table__tests.py::test_table_footer_pagination_scope \
++      --deselect=iommi/table__tests.py::test_table_footer_table_default_paginate \
++      --deselect=iommi/table__tests.py::test_table_footer_callable_kwargs \
++      --deselect=iommi/table__tests.py::test_table_footer_sum_ignores_none \
++      --deselect=iommi/table__tests.py::test_table_footer_tag_and_attrs
 +    ;;
 +  new)
 +    # Run only the newly added tests; expected to fail before implementing the feature
@@ -240,6 +279,7 @@ index 00000000..a40cfd76
 +      iommi/table__tests.py::test_table_footer_pagination_scope \
 +      iommi/table__tests.py::test_table_footer_table_default_paginate \
 +      iommi/table__tests.py::test_table_footer_callable_kwargs \
++      iommi/table__tests.py::test_table_footer_sum_ignores_none \
 +      iommi/table__tests.py::test_table_footer_tag_and_attrs
 +    ;;
 +  *)

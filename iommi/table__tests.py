@@ -531,8 +531,34 @@ def test_table_footer_callable_kwargs():
     # Verify footer__format callable received expected kwargs
     assert 'table' in captured_format_kwargs
     assert 'column' in captured_format_kwargs
+    assert 'values' in captured_format_kwargs
+    assert 'rows' in captured_format_kwargs
     # Verify value was passed as positional argument (not in kwargs)
     assert captured_format_value == 10
+
+
+def test_table_footer_sum_ignores_none():
+    rows = [
+        Struct(name='A', value=10),
+        Struct(name='B', value=None),
+        Struct(name='C', value=20),
+        Struct(name='D', value=None),
+    ]
+
+    class SumWithNoneTable(Table):
+        name = Column()
+        value = Column.integer(
+            footer__include=True,
+            footer__aggregation='sum',
+        )
+
+    table = SumWithNoneTable(rows=rows)
+    html = table.bind(request=req('get')).__html__()
+    soup = BeautifulSoup(html, 'html.parser')
+    footer_cells = soup.find('tfoot').find_all('td')
+    
+    # Sum should be 30 (10 + 20), ignoring None values
+    assert footer_cells[1].get_text(strip=True) == '30'
 
 
 def test_table_footer_tag_and_attrs():
@@ -559,7 +585,13 @@ def test_table_footer_tag_and_attrs():
     table = CustomFooterTable(rows=rows)
     html = table.bind(request=req('get')).__html__()
     soup = BeautifulSoup(html, 'html.parser')
-    footer_row = soup.find('tfoot').find('tr')
+    tfoot = soup.find('tfoot')
+    tbody = soup.find('tbody')
+    
+    # Verify tfoot comes after tbody in document order
+    assert tfoot.sourceline > tbody.sourceline
+    
+    footer_row = tfoot.find('tr')
     
     # Verify footer__tag changes td to th
     first_cell = footer_row.find('th')
