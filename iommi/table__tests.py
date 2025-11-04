@@ -2483,12 +2483,15 @@ def test_builtin_data_endpoint_value_key_with_custom_attr():
     assert payload['rows'] == [{'name': 'Seven', 'custom': '7'}]
 
 
-def test_builtin_data_endpoint_endpoint_registered():
+def test_builtin_data_endpoint_available_on_plain_table():
     table = Table(rows=[])
-    bound_table = table.bind(request=req('get'))
 
-    assert 'data' in bound_table.endpoints
-    assert callable(bound_table.endpoints.data.func)
+    payload = perform_ajax_dispatch(root=table.bind(request=req('get')), path='/data', value='')
+
+    assert payload['columns'] == []
+    assert payload['rows'] == []
+    assert payload['query'] == {}
+    assert payload['paginator']['page'] == 1
 
 
 def test_ajax_data_endpoint():
