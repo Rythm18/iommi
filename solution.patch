@@ -1,0 +1,79 @@
+diff --git a/iommi/table.py b/iommi/table.py
+index eb48953d..287fcacc 100644
+--- a/iommi/table.py
++++ b/iommi/table.py
+@@ -1691,6 +1691,66 @@ def endpoint__tbody(table, **_):
+     }
+ 
+ 
++def endpoint__data(table, **_):
++    request = table.get_request()
++
++    if request is not None:
++        params = params_of_request(request)
++        query_payload = {
++            key: values[0] if len(values) == 1 else values
++            for key, values in params.lists()
++        }
++    else:
++        query_payload = {}
++
++    columns_payload = []
++    for column in values(table.columns):
++        if not column.render_column:
++            continue
++        columns_payload.append(
++            dict(
++                name=column._name,
++                display_name=column.display_name,
++                attr=None if column.attr in (None, MISSING) else column.attr,
++                sortable=bool(column.sortable),
++                is_sorting=bool(getattr(column, 'is_sorting', False)),
++                sort_direction=getattr(column, 'sort_direction', None),
++                csv_whitelisted=bool(column.extra.get('csv_whitelist', False)),
++            )
++        )
++
++    rows_payload = []
++    for cells in table.cells_for_rows():
++        if not isinstance(cells, Cells):
++            continue
++        row_payload = {}
++        for bound_cell in cells:
++            formatted = bound_cell.render_formatted()
++            row_payload[bound_cell.column._name] = '' if formatted is None else str(formatted)
++        rows_payload.append(row_payload)
++
++    paginator = table.paginator if hasattr(table, 'paginator') else None
++    paginator_context = getattr(paginator, 'context', None) or {}
++    paginator_payload = dict(
++        page=paginator_context.get('page'),
++        pages=paginator_context.get('pages'),
++        page_size=paginator_context.get('page_size'),
++        hits=paginator_context.get('hits'),
++        has_next=paginator_context.get('has_next'),
++        has_previous=paginator_context.get('has_previous'),
++        next=paginator_context.get('next'),
++        previous=paginator_context.get('previous'),
++    )
++
++    return dict(
++        columns=columns_payload,
++        rows=rows_payload,
++        paginator=paginator_payload,
++        query=query_payload,
++        sort_order=table.current_sort_order,
++    )
++
++
+ def endpoint__csv(table, **_):
+     from datetime import timezone
+ 
+@@ -1927,6 +1987,7 @@ def post_bulk_edit(table, queryset, updates, **_):
+         query__form__actions__submit__call_target=Action.button,
+         title=MISSING,
+         endpoints__tbody__func=endpoint__tbody,
++        endpoints__data__func=endpoint__data,
+         endpoints__csv__func=endpoint__csv,
+         query__advanced__assets__query_form_toggle_script__template = "iommi/query/form_toggle_script.html",
+         query__form__attrs = {
