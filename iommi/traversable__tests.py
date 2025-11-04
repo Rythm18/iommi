@@ -163,6 +163,8 @@ def test_traverse_on_iommi():
         'fusk/label': 'parts/a_table/query/form/fields/fusk/label',
         'fusk/non_editable_input': 'parts/a_table/query/form/fields/fusk/non_editable_input',
         'fusk/validate': 'parts/a_table/query/form/fields/fusk/endpoints/validate',
+        'footer': 'parts/a_table/footer',
+        'footer/row': 'parts/a_table/footer/children/row',
         'h_tag': 'parts/a_table/outer/children/h_tag',
         'help': 'parts/some_form/fields/fisk/help',
         'input': 'parts/some_form/fields/fisk/input',

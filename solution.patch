@@ -1,5 +1,5 @@
 diff --git a/iommi/table.py b/iommi/table.py
-index eb48953d..4cd1fb49 100644
+index eb48953d..c777d5eb 100644
 --- a/iommi/table.py
 +++ b/iommi/table.py
 @@ -311,6 +311,47 @@ def default_cell_formatter(table: 'Table', column: 'Column', row, value, **_):
@@ -160,7 +160,14 @@ index eb48953d..4cd1fb49 100644
  
          super(Table, self).on_refine_done()
  
-@@ -2234,6 +2305,24 @@ def on_bind(self) -> None:
+@@ -2230,10 +2301,31 @@ def on_bind(self) -> None:
+         self.title = evaluate_strict(self.title, **self.iommi_evaluate_parameters())
+         build_and_bind_h_tag(self)
+ 
++        # Reset preprocessed rows cache on bind (filters may have changed)
++        self._preprocessed_rows = {True: None, False: None}
++
+         bind_member(self, name='tbody')
          self.tbody.children.text = _Lazy_tbody(self)
          self.tbody.children = sort_after(self.tbody.children)
  
@@ -185,7 +192,7 @@ index eb48953d..4cd1fb49 100644
          bind_member(self, name='container')
          bind_member(self, name='table_tag_wrapper')
          bind_member(self, name='outer')
-@@ -2506,13 +2595,15 @@ def cells_for_rows(self, paginate=True):
+@@ -2506,13 +2598,15 @@ def cells_for_rows(self, paginate=True):
              rows = self.get_visible_rows()
          else:
              rows = self.sorted_and_filtered_rows
@@ -204,7 +211,7 @@ index eb48953d..4cd1fb49 100644
              row = self.invoke_callback(self.preprocess_row, row=row)
              assert row is not None, 'preprocess_row must return the row'
  
-@@ -2527,6 +2618,128 @@ def cells_for_rows(self, paginate=True):
+@@ -2527,6 +2621,128 @@ def cells_for_rows(self, paginate=True):
              # noinspection PyCallingNonCallable
              yield self.cells_class(row=row, row_index=i, **self.row.as_dict()).bind(parent=self)
  
@@ -346,3 +353,16 @@ index 36d8049c..e56a0a1a 100644
          {{ table.iommi_close_tag }}
          {{ table.table_tag_wrapper.iommi_close_tag }}
  
+diff --git a/iommi/traversable__tests.py b/iommi/traversable__tests.py
+index 62048e27..5bb8bef7 100644
+--- a/iommi/traversable__tests.py
++++ b/iommi/traversable__tests.py
+@@ -163,6 +163,8 @@ class MyPage(Page):
+         'fusk/label': 'parts/a_table/query/form/fields/fusk/label',
+         'fusk/non_editable_input': 'parts/a_table/query/form/fields/fusk/non_editable_input',
+         'fusk/validate': 'parts/a_table/query/form/fields/fusk/endpoints/validate',
++        'footer': 'parts/a_table/footer',
++        'footer/row': 'parts/a_table/footer/children/row',
+         'h_tag': 'parts/a_table/outer/children/h_tag',
+         'help': 'parts/some_form/fields/fisk/help',
+         'input': 'parts/some_form/fields/fisk/input',

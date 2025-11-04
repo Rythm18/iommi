@@ -2301,6 +2301,9 @@ class Table(Part, Tag):
         self.title = evaluate_strict(self.title, **self.iommi_evaluate_parameters())
         build_and_bind_h_tag(self)
 
+        # Reset preprocessed rows cache on bind (filters may have changed)
+        self._preprocessed_rows = {True: None, False: None}
+
         bind_member(self, name='tbody')
         self.tbody.children.text = _Lazy_tbody(self)
         self.tbody.children = sort_after(self.tbody.children)
