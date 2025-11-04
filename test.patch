@@ -1,5 +1,5 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 1a3f564..1246e3a 100644
+index 1a3f564..1246e3a 100755
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
 @@ -2369,6 +2369,130 @@ def test_ajax_endpoint_empty_response():
