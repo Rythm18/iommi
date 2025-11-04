@@ -1,151 +1,407 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 25c9f15118f1..7ec846074d49 100644
+index 1246e3a8..a202a069 100644
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
-@@ -2369,6 +2369,130 @@ def endpoints__foo__func(**_):
+@@ -2172,400 +2172,402 @@ def post_validation(**_):
+     with pytest.raises(FooException):
+         Table(
+             rows=[],
+             model=TFoo,
+             columns__a=Column(_name='a', filter__include=True),
+             query__form__post_validation=post_validation,
+         ).bind(
+             request=Struct(method='POST', POST={'-submit': '-'}, GET=Struct(urlencode=lambda: '')),
+         )
+ 
+ 
+ def test_float():
+     x = Column.float().refine_done()
+     assert getattr_path(x, 'filter__call_target__attribute') == 'float'
+     assert getattr_path(x, 'bulk__call_target__attribute') == 'float'
+ 
+ 
+ def test_integer():
+     x = Column.integer().refine_done()
+     assert getattr_path(x, 'filter__call_target__attribute') == 'integer'
+     assert getattr_path(x, 'bulk__call_target__attribute') == 'integer'
+ 
+ 
+ def test_date():
+     x = Column.date().refine_done()
+     assert getattr_path(x, 'filter__call_target__attribute') == 'date'
+     assert getattr_path(x, 'bulk__call_target__attribute') == 'date'
+ 
+ 
+ def test_datetime():
+     x = Column.datetime().refine_done()
+     assert getattr_path(x, 'filter__call_target__attribute') == 'datetime'
+     assert getattr_path(x, 'bulk__call_target__attribute') == 'datetime'
+ 
+ 
+ def test_email():
+     x = Column.email().refine_done()
+     assert getattr_path(x, 'filter__call_target__attribute') == 'email'
+     assert getattr_path(x, 'bulk__call_target__attribute') == 'email'
+ 
+ 
+ def test_extra():
+     class TestTable(Table):
+         foo = Column(extra__foo=1, extra__bar=2)
+ 
+     assert TestTable(rows=[]).bind(request=None).columns.foo.extra.foo == 1
+     assert TestTable(rows=[]).bind(request=None).columns.foo.extra.bar == 2
+ 
+ 
+ def test_row_extra():
+     class TestTable(Table):
+         result = Column(cell__value=lambda cells, **_: cells.extra_evaluated.foo)
+ 
+         class Meta:
+             row__extra__foo = 7
+ 
+             @staticmethod
+             def row__extra_evaluated__foo(table, row, **_):
+                 return row.a + row.b
+ 
+     table = TestTable(rows=[Struct(a=5, b=7)]).bind(
+         request=req('get'),
+     )
+     cells = list(table.cells_for_rows())[0]
+ 
+     assert cells.extra.foo == 7
+     assert cells.extra_evaluated.foo == 5 + 7
+     assert cells['result'].value == 5 + 7
+ 
+ 
+ def test_row_extra_evaluated():
+     def some_callable(row, **_):
+         return row.a + row.b
+ 
+     class TestTable(Table):
+         result = Column(cell__value=lambda cells, **_: cells.extra_evaluated.foo)
+ 
+         class Meta:
+             row__extra__foo = some_callable
+             row__extra_evaluated__foo = some_callable
+ 
+     table = TestTable(
+         rows=[Struct(a=5, b=7)],
+     )
+     table = table.bind(request=req('get'))
+     cells = list(table.cells_for_rows())[0]
+     assert cells.extra.foo is some_callable
+     assert cells.extra_evaluated.foo == 5 + 7
+     assert cells['result'].value == 5 + 7
+ 
+ 
+ @pytest.mark.django_db
+ def test_from_model():
+     t = Table(
+         auto__model=TFoo,
+         columns__a__display_name='Some a',
+         columns__a__extra__stuff='Some stuff',
+     )
+     t = t.bind(request=None)
+     assert set(get_field_by_name(TFoo).keys()) == {'id', 'a', 'b', 'tbar_set'}
+     assert set(t.iommi_namespace.columns.keys()) == {'select', 'id', 'a', 'b', 'tbar_set'}
+     assert list(t.columns.keys()) == ['a', 'b']
+     assert t.columns['a'].display_name == 'Some a'
+     assert t.columns['a'].extra.stuff == 'Some stuff'
+ 
+ 
+ @pytest.mark.django_db
+ def test_from_model_foreign_key():
+     t = Table(
+         auto__model=TBar,
+     ).bind(request=None)
+     assert set(t.iommi_namespace.columns.keys()) == {'select', 'id', 'foo', 'c', 'tbar2_set'}
+     assert list(t.columns.keys()) == ['foo', 'c']
+ 
+ 
+ @pytest.mark.django_db
+ def test_select_ordering():
+     t = Table(
+         auto__model=TBar,
+         columns__select__include=True,
+     ).bind(request=None)
+     assert set(t.iommi_namespace.columns.keys()) == {'select', 'id', 'foo', 'c', 'tbar2_set'}
+     assert list(t.columns.keys()) == ['select', 'foo', 'c']
+ 
+ 
+ @pytest.mark.django_db
+ def test_explicit_table_does_not_use_from_model():
+     class TestTable(Table):
+         foo = Column.choice_queryset(
+             model=TFoo,
+             choices=lambda table, **_: TFoo.objects.all(),
+             filter__include=True,
+             bulk__include=True,
+         )
+ 
+     t = TestTable().bind(request=None)
+     assert list(t.iommi_namespace.columns.keys()) == ['select', 'foo']
+     assert list(t.iommi_bound_members().columns._bound_members.keys()) == ['foo']
+ 
+ 
+ @pytest.mark.django_db
+ def test_from_model_implicit():
+     t = Table(auto__rows=TBar.objects.all()).bind(request=None)
+     assert set(t.iommi_namespace.columns.keys()) == {'select', 'id', 'foo', 'c', 'tbar2_set'}
+     assert list(t.columns.keys()) == ['foo', 'c']
+ 
+ 
+ @pytest.mark.django_db
+ def test_from_model_implicit_not_break_sorting():
+     t = Table(auto__model=TBar, rows=lambda table, **_: TBar.objects.all()).bind(request=None)
+     assert isinstance(t.rows, QuerySet)
+ 
+ 
+ @override_settings(DEBUG=True)
+ @pytest.mark.django_db
+ def test_ajax_endpoint():
+     f1 = TFoo.objects.create(a=17, b="Hej")
+     f2 = TFoo.objects.create(a=42, b="Hopp")
+ 
+     TBar(foo=f1, c=True).save()
+     TBar(foo=f2, c=False).save()
+ 
+     class TestTable(Table):
+         foo = Column.choice_queryset(
+             model=TFoo,
+             choices=lambda table, **_: TFoo.objects.all(),
+             filter__include=True,
+             bulk__include=True,
+         )
+ 
+     # This test could also have been made with perform_ajax_dispatch directly, but it's nice to have a test that tests more of the code path
+     result = request_with_middleware(
+         Page(
+             parts__table=TestTable(rows=TBar.objects.all()),
+         ),
+         req('get', **{'/parts/table/query/form/fields/foo/endpoints/choices': 'hopp'}),
+     )
+     assert json.loads(result.content) == {
+         'results': [
+             {'id': f2.pk, 'text': 'Foo(42, Hopp)'},
+         ],
+         'pagination': {'more': False},
+         'page': 1,
+     }
+ 
+ 
+ @pytest.mark.django_db
+ def test_ajax_endpoint_empty_response():
+     class TestTable(Table):
+         class Meta:
+             @staticmethod
+             def endpoints__foo__func(**_):
+                 return []
+ 
+         bar = Column()
+ 
+     actual = perform_ajax_dispatch(root=TestTable(rows=[]).bind(request=req('get')), path='/foo', value='')
      assert actual == []
  
  
-+def test_builtin_data_endpoint_simple_rows():
-+    class SimpleTable(Table):
-+        foo = Column()
-+        bar = Column()
-+        hidden = Column(include=False)
-+
-+    table = SimpleTable(rows=[Struct(foo=1, bar=2), Struct(foo=3, bar=4)])
-+    bound_table = table.bind(request=req('get'))
-+
-+    payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
-+
-+    assert [column['name'] for column in payload['columns']] == ['foo', 'bar']
-+    assert [column['value_key'] for column in payload['columns']] == ['foo', 'bar']
-+    for column in payload['columns']:
-+        assert set(column.keys()) >= {'name', 'display_name', 'value_key', 'csv_whitelisted'}
-+
-+    assert all(column['csv_whitelisted'] is False for column in payload['columns'])
-+
-+    assert payload['rows'] == [
-+        {'foo': '1', 'bar': '2'},
-+        {'foo': '3', 'bar': '4'},
-+    ]
-+
-+    paginator = payload['paginator']
-+    assert paginator['page'] == 1
-+    assert paginator['per_page'] is None
-+    assert paginator['total'] == 2
-+    assert paginator['has_next'] is False
-+    assert paginator['has_prev'] is False
-+    assert paginator['next'] is None
-+    assert paginator['prev'] is None
-+
-+    assert payload['query'] == {}
 +
 +
-+@pytest.mark.django_db
-+def test_builtin_data_endpoint_queryset_pagination_and_metadata():
-+    TFoo.objects.all().delete()
-+
-+    for i in range(1, 6):
-+        TFoo.objects.create(a=i, b=f'foo-{i}')
-+
-+    table = Table(
-+        auto__rows=TFoo.objects.all(),
-+        columns__a__extra__csv_whitelist=True,
-+        columns__b=Column(),
-+        columns__hidden=Column(render_column=False),
-+        page_size=2,
-+    )
-+
-+    bound_table = table.bind(request=req('get', order='-a', page='2'))
-+
-+    payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
-+
-+    assert payload['query'] == {'order': '-a', 'page': '2'}
-+
-+    columns = payload['columns']
-+    assert [column['name'] for column in columns] == ['a', 'b']
-+    assert columns[0]['csv_whitelisted'] is True
-+    assert columns[1]['csv_whitelisted'] is False
-+
-+    paginator = payload['paginator']
-+    assert paginator == {
-+        'page': 2,
-+        'per_page': 2,
-+        'total': 5,
-+        'has_next': True,
-+        'has_prev': True,
-+        'next': 3,
-+        'prev': 1,
-+    }
-+    assert payload['rows'] == [
-+        {'a': '3', 'b': 'foo-3'},
-+        {'a': '2', 'b': 'foo-2'},
-+    ]
-+
-+
-+@pytest.mark.django_db
-+def test_builtin_data_endpoint_respects_filters_and_includes():
-+    TFoo.objects.all().delete()
-+
-+    TFoo.objects.bulk_create([
-+        TFoo(a=1, b='hello'),
-+        TFoo(a=2, b='world'),
-+    ])
-+
-+    table = Table(
-+        auto__rows=TFoo.objects.all(),
-+        columns__a=Column(include=False),
-+        columns__b=Column(filter__include=True),
-+    )
-+
-+    bound_table = table.bind(request=req('get', b='hello'))
-+
-+    payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
-+
-+    assert [column['name'] for column in payload['columns']] == ['b']
-+    assert payload['rows'] == [{'b': 'hello'}]
-+    assert payload['query'] == {'b': 'hello'}
-+
-+
-+def test_builtin_data_endpoint_value_key_with_custom_attr():
-+    table = Table(
-+        rows=[Struct(a=Struct(value=7), title='Seven')],
-+        columns__name=Column(attr='title'),
-+        columns__custom=Column(attr='a__value'),
-+    )
-+
-+    payload = perform_ajax_dispatch(root=table.bind(request=req('get')), path='/data', value='')
-+
-+    assert [column['value_key'] for column in payload['columns']] == ['name', 'custom']
-+    assert payload['rows'] == [{'name': 'Seven', 'custom': '7'}]
-+
-+
-+def test_builtin_data_endpoint_available_on_plain_table():
-+    table = Table(rows=[])
-+
-+    payload = perform_ajax_dispatch(root=table.bind(request=req('get')), path='/data', value='')
-+
-+    assert payload['columns'] == []
-+    assert payload['rows'] == []
-+    assert payload['query'] == {}
-+    assert payload['paginator']['page'] == 1
-+
+ def test_builtin_data_endpoint_simple_rows():
+     class SimpleTable(Table):
+         foo = Column()
+         bar = Column()
+         hidden = Column(include=False)
+ 
+     table = SimpleTable(rows=[Struct(foo=1, bar=2), Struct(foo=3, bar=4)])
+     bound_table = table.bind(request=req('get'))
+ 
+     payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
+ 
+     assert [column['name'] for column in payload['columns']] == ['foo', 'bar']
+     assert [column['value_key'] for column in payload['columns']] == ['foo', 'bar']
+     for column in payload['columns']:
+         assert set(column.keys()) >= {'name', 'display_name', 'value_key', 'csv_whitelisted'}
+ 
+     assert all(column['csv_whitelisted'] is False for column in payload['columns'])
+ 
+     assert payload['rows'] == [
+         {'foo': '1', 'bar': '2'},
+         {'foo': '3', 'bar': '4'},
+     ]
+ 
+     paginator = payload['paginator']
+     assert paginator['page'] == 1
+     assert paginator['per_page'] is None
+     assert paginator['total'] == 2
+     assert paginator['has_next'] is False
+     assert paginator['has_prev'] is False
+     assert paginator['next'] is None
+     assert paginator['prev'] is None
+ 
+     assert payload['query'] == {}
+ 
+ 
+ @pytest.mark.django_db
+ def test_builtin_data_endpoint_queryset_pagination_and_metadata():
+     TFoo.objects.all().delete()
+ 
+     for i in range(1, 6):
+         TFoo.objects.create(a=i, b=f'foo-{i}')
+ 
+     table = Table(
+         auto__rows=TFoo.objects.all(),
+         columns__a__extra__csv_whitelist=True,
+         columns__b=Column(),
+         columns__hidden=Column(render_column=False),
+         page_size=2,
+     )
+ 
+     bound_table = table.bind(request=req('get', order='-a', page='2'))
+ 
+     payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
+ 
+     assert payload['query'] == {'order': '-a', 'page': '2'}
+ 
+     columns = payload['columns']
+     assert [column['name'] for column in columns] == ['a', 'b']
+     assert columns[0]['csv_whitelisted'] is True
+     assert columns[1]['csv_whitelisted'] is False
+ 
+     paginator = payload['paginator']
+     assert paginator == {
+         'page': 2,
+         'per_page': 2,
+         'total': 5,
+         'has_next': True,
+         'has_prev': True,
+         'next': 3,
+         'prev': 1,
+     }
+     assert payload['rows'] == [
+         {'a': '3', 'b': 'foo-3'},
+         {'a': '2', 'b': 'foo-2'},
+     ]
+ 
+ 
+ @pytest.mark.django_db
+ def test_builtin_data_endpoint_respects_filters_and_includes():
+     TFoo.objects.all().delete()
+ 
+     TFoo.objects.bulk_create([
+         TFoo(a=1, b='hello'),
+         TFoo(a=2, b='world'),
+     ])
+ 
+     table = Table(
+         auto__rows=TFoo.objects.all(),
+         columns__a=Column(include=False),
+         columns__b=Column(filter__include=True),
+     )
+ 
+     bound_table = table.bind(request=req('get', b='hello'))
+ 
+     payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
+ 
+     assert [column['name'] for column in payload['columns']] == ['b']
+     assert payload['rows'] == [{'b': 'hello'}]
+     assert payload['query'] == {'b': 'hello'}
+ 
+ 
+ def test_builtin_data_endpoint_value_key_with_custom_attr():
+     table = Table(
+         rows=[Struct(a=Struct(value=7), title='Seven')],
+         columns__name=Column(attr='title'),
+         columns__custom=Column(attr='a__value'),
+     )
+ 
+     payload = perform_ajax_dispatch(root=table.bind(request=req('get')), path='/data', value='')
+ 
+     assert [column['value_key'] for column in payload['columns']] == ['name', 'custom']
+     assert payload['rows'] == [{'name': 'Seven', 'custom': '7'}]
+ 
+ 
+ def test_builtin_data_endpoint_available_on_plain_table():
+     table = Table(rows=[])
+ 
+     payload = perform_ajax_dispatch(root=table.bind(request=req('get')), path='/data', value='')
+ 
+     assert payload['columns'] == []
+     assert payload['rows'] == []
+     assert payload['query'] == {}
+     assert payload['paginator']['page'] == 1
+ 
  
  def test_ajax_data_endpoint():
      class TestTable(Table):
-diff --git a/test.sh b/test.sh
-index 74f43f320db4..59842a8c60aa 100644
---- a/test.sh
-+++ b/test.sh
-@@ -11,7 +11,9 @@ case "$1" in
-     pytest \
-       iommi/table__tests.py::test_builtin_data_endpoint_simple_rows \
-       iommi/table__tests.py::test_builtin_data_endpoint_queryset_pagination_and_metadata \
--      iommi/table__tests.py::test_builtin_data_endpoint_respects_filters_and_includes
-+      iommi/table__tests.py::test_builtin_data_endpoint_respects_filters_and_includes \
-+      iommi/table__tests.py::test_builtin_data_endpoint_value_key_with_custom_attr \
-+      iommi/table__tests.py::test_builtin_data_endpoint_available_on_plain_table
-     ;;
-   *)
-     echo "Usage: ./test.sh {base|new}"
-
+         class Meta:
+             @staticmethod
+             def endpoints__data__func(table, **_):
+                 return [{cell.column._name: cell.value for cell in cells} for cells in table.cells_for_rows()]
+ 
+         foo = Column()
+         bar = Column()
+ 
+     table = TestTable(
+         rows=[
+             Struct(foo=1, bar=2),
+             Struct(foo=3, bar=4),
+         ]
+     )
+     table = table.bind(request=req('get'))
+ 
+     actual = perform_ajax_dispatch(root=table, path='/data', value='')
+     expected = [dict(foo=1, bar=2), dict(foo=3, bar=4)]
+     assert actual == expected
+ 
+ 
+ def test_ajax_endpoint_namespacing():
+     class TestTable(Table):
+         class Meta:
+             @staticmethod
+             def endpoints__bar__func(**_):
+                 return 17
+ 
+         baz = Column()
+ 
+     with pytest.raises(InvalidEndpointPathException):
+         perform_ajax_dispatch(root=TestTable(rows=[]).bind(request=req('get')), path='/baz', value='')
+ 
+     actual = perform_ajax_dispatch(root=TestTable(rows=[]).bind(request=req('get')), path='/bar', value='')
+     assert 17 == actual
+ 
+ 
+ def test_table_iteration():
+     class TestTable(Table):
+         class Meta:
+             rows = [Struct(foo='a', bar=1), Struct(foo='b', bar=2)]
+ 
+         foo = Column()
+         bar = Column(cell__value=lambda row, **_: row['bar'] + 1)
+ 
+     table = TestTable().bind(request=req('get'))
+ 
+     assert [
+         {bound_cell.column._name: bound_cell.value for bound_cell in cells} for cells in table.cells_for_rows()
+     ] == [
+         dict(foo='a', bar=2),
+         dict(foo='b', bar=3),
+     ]
+ 
+ 
+ def test_ajax_custom_endpoint():
+     class TestTable(Table):
+         class Meta:
+             @staticmethod
+             def endpoints__foo__func(value, **_):
+                 return dict(baz=value)
+ 
+         spam = Column()
+ 
+     actual = perform_ajax_dispatch(root=TestTable(rows=[]).bind(request=req('get')), path='/foo', value='bar')
+     assert actual == dict(baz='bar')
+ 
+ 
+ def test_table_extra_namespace():
+     class TestTable(Table):
+         class Meta:
+             extra__foo = 17
+ 
