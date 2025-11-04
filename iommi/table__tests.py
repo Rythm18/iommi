@@ -495,12 +495,16 @@ def test_table_footer_callable_kwargs():
 
     captured_value_kwargs = {}
     captured_format_kwargs = {}
+    captured_format_value = None
 
     def capture_value_kwargs(**kwargs):
         captured_value_kwargs.update(kwargs)
-        return kwargs.get('column').iommi_bound_object().footer.aggregation
+        # Return the sum directly without relying on internal API
+        return sum(kwargs.get('values', []))
 
     def capture_format_kwargs(value, **kwargs):
+        nonlocal captured_format_value
+        captured_format_value = value
         captured_format_kwargs.update(kwargs)
         return str(value)
 
@@ -527,7 +531,45 @@ def test_table_footer_callable_kwargs():
     # Verify footer__format callable received expected kwargs
     assert 'table' in captured_format_kwargs
     assert 'column' in captured_format_kwargs
-    assert 'value' in captured_format_kwargs
+    # Verify value was passed as positional argument (not in kwargs)
+    assert captured_format_value == 10
+
+
+def test_table_footer_tag_and_attrs():
+    rows = [
+        Struct(name='A', quantity=2),
+        Struct(name='B', quantity=3),
+    ]
+
+    class CustomFooterTable(Table):
+        name = Column(
+            footer__include=True,
+            footer__value='Total',
+            footer__tag='th',
+            footer__attrs__class__total_label=True,
+        )
+        quantity = Column.integer(
+            attr='quantity',
+            footer__include=True,
+            footer__aggregation='sum',
+            footer__attrs__class__total_value=True,
+            footer__attrs__style='font-weight: bold;',
+        )
+
+    table = CustomFooterTable(rows=rows)
+    html = table.bind(request=req('get')).__html__()
+    soup = BeautifulSoup(html, 'html.parser')
+    footer_row = soup.find('tfoot').find('tr')
+    
+    # Verify footer__tag changes td to th
+    first_cell = footer_row.find('th')
+    assert first_cell is not None
+    assert 'total_label' in first_cell.get('class', [])
+    
+    # Verify footer__attrs are applied
+    second_cell = footer_row.find_all('td')[0]
+    assert 'total_value' in second_cell.get('class', [])
+    assert second_cell.get('style') == 'font-weight: bold;'
 
 
 @pytest.fixture
