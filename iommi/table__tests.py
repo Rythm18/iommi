@@ -479,7 +479,9 @@ def test_table_footer_table_default_paginate():
     bound_table = table.bind(request=req('get'))
     html = bound_table.__html__()
     soup = BeautifulSoup(html, 'html.parser')
-    footer_cells = soup.find('tfoot').find_all('td')
+    tfoot = soup.find('tfoot')
+    assert tfoot is not None
+    footer_cells = tfoot.find_all('td')
 
     assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '5']
 

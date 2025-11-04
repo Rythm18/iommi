@@ -1,5 +1,14 @@
 #!/bin/bash
-set -e
+set -euo pipefail
+
+usage() {
+  echo "Usage: $0 {base|new}" >&2
+  exit 1
+}
+
+if [ "$#" -ne 1 ]; then
+  usage
+fi
 
 case "$1" in
   base)
@@ -14,7 +23,6 @@ case "$1" in
       iommi/table__tests.py::test_table_footer_table_default_paginate
     ;;
   *)
-    echo "Usage: ./test.sh {base|new}"
-    exit 1
+    usage
     ;;
 esac

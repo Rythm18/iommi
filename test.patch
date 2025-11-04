@@ -1,55 +1,44 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 54233c9d..3056177d 100755
+index 3056177d..800aed33 100755
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
-@@ -454,6 +454,36 @@ class Meta:
-     assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '10', '5']
+@@ -479,7 +479,9 @@ class Meta:
+     bound_table = table.bind(request=req('get'))
+     html = bound_table.__html__()
+     soup = BeautifulSoup(html, 'html.parser')
+-    footer_cells = soup.find('tfoot').find_all('td')
++    tfoot = soup.find('tfoot')
++    assert tfoot is not None
++    footer_cells = tfoot.find_all('td')
  
+     assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '5']
  
-+def test_table_footer_table_default_paginate():
-+    rows = [
-+        Struct(name='A', quantity=2),
-+        Struct(name='B', quantity=3),
-+        Struct(name='C', quantity=5),
-+    ]
-+
-+    class DefaultPaginateTable(Table):
-+        class Meta:
-+            page_size = 2
-+
-+        name = Column(
-+            footer__include=True,
-+            footer__value='Totals',
-+        )
-+        quantity = Column.integer(
-+            attr='quantity',
-+            footer__include=True,
-+            footer__aggregation='sum',
-+        )
-+
-+    table = DefaultPaginateTable(rows=rows, footer__extra__paginate=True)
-+    bound_table = table.bind(request=req('get'))
-+    html = bound_table.__html__()
-+    soup = BeautifulSoup(html, 'html.parser')
-+    footer_cells = soup.find('tfoot').find_all('td')
-+
-+    assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '5']
-+
-+
- @pytest.fixture
- def NoSortTable():  # noqa: N802
-     class NoSortTable(Table):
 diff --git a/test.sh b/test.sh
-index a48462d6..4e73ad50 100755
+index 4e73ad50..99dd5961 100755
 --- a/test.sh
 +++ b/test.sh
-@@ -10,7 +10,8 @@ case "$1" in
-     # Run only the newly added tests; expected to fail before implementing the feature
-     python3 -m pytest \
-       iommi/table__tests.py::test_table_column_footer_aggregations \
--      iommi/table__tests.py::test_table_footer_pagination_scope
-+      iommi/table__tests.py::test_table_footer_pagination_scope \
-+      iommi/table__tests.py::test_table_footer_table_default_paginate
+@@ -1,5 +1,14 @@
+ #!/bin/bash
+-set -e
++set -euo pipefail
++
++usage() {
++  echo "Usage: $0 {base|new}" >&2
++  exit 1
++}
++
++if [ "$#" -ne 1 ]; then
++  usage
++fi
+ 
+ case "$1" in
+   base)
+@@ -14,7 +23,6 @@ case "$1" in
+       iommi/table__tests.py::test_table_footer_table_default_paginate
      ;;
    *)
-     echo "Usage: ./test.sh {base|new}"
+-    echo "Usage: ./test.sh {base|new}"
+-    exit 1
++    usage
+     ;;
+ esac
