@@ -2369,6 +2369,131 @@ def test_ajax_endpoint_empty_response():
     assert actual == []
 
 
+def test_builtin_data_endpoint_simple_rows():
+    class SimpleTable(Table):
+        foo = Column()
+        bar = Column()
+        hidden = Column(include=False)
+
+    table = SimpleTable(rows=[Struct(foo=1, bar=2), Struct(foo=3, bar=4)])
+    bound_table = table.bind(request=req('get'))
+
+    payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
+
+    assert [column['name'] for column in payload['columns']] == ['foo', 'bar']
+    assert [column['value_key'] for column in payload['columns']] == ['foo', 'bar']
+    for column in payload['columns']:
+        assert set(column.keys()) >= {'name', 'display_name', 'value_key', 'csv_whitelisted'}
+
+    assert all(column['csv_whitelisted'] is False for column in payload['columns'])
+
+    assert payload['rows'] == [
+        {'foo': '1', 'bar': '2'},
+        {'foo': '3', 'bar': '4'},
+    ]
+
+    paginator = payload['paginator']
+    assert paginator['page'] == 1
+    assert paginator['per_page'] is None
+    assert paginator['total'] == 2
+    assert paginator['has_next'] is False
+    assert paginator['has_prev'] is False
+    assert paginator['next'] is None
+    assert paginator['prev'] is None
+
+    assert payload['query'] == {}
+
+
+@pytest.mark.django_db
+def test_builtin_data_endpoint_queryset_pagination_and_metadata():
+    TFoo.objects.all().delete()
+
+    for i in range(1, 6):
+        TFoo.objects.create(a=i, b=f'foo-{i}')
+
+    table = Table(
+        auto__rows=TFoo.objects.all(),
+        columns__a__extra__csv_whitelist=True,
+        columns__b=Column(),
+        columns__hidden=Column(render_column=False),
+        page_size=2,
+    )
+
+    bound_table = table.bind(request=req('get', order='-a', page='2'))
+
+    payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
+
+    assert payload['query'] == {'order': '-a', 'page': '2'}
+
+    columns = payload['columns']
+    assert [column['name'] for column in columns] == ['a', 'b']
+    assert columns[0]['csv_whitelisted'] is True
+    assert columns[1]['csv_whitelisted'] is False
+
+    paginator = payload['paginator']
+    assert paginator == {
+        'page': 2,
+        'per_page': 2,
+        'total': 5,
+        'has_next': True,
+        'has_prev': True,
+        'next': 3,
+        'prev': 1,
+    }
+    assert payload['rows'] == [
+        {'a': '3', 'b': 'foo-3'},
+        {'a': '2', 'b': 'foo-2'},
+    ]
+
+
+@pytest.mark.django_db
+def test_builtin_data_endpoint_respects_filters_and_includes():
+    TFoo.objects.all().delete()
+
+    TFoo.objects.bulk_create([
+        TFoo(a=1, b='hello'),
+        TFoo(a=2, b='world'),
+    ])
+
+    table = Table(
+        auto__rows=TFoo.objects.all(),
+        columns__a=Column(include=False),
+        columns__b=Column(filter__include=True),
+    )
+
+    bound_table = table.bind(request=req('get', b='hello'))
+
+    payload = perform_ajax_dispatch(root=bound_table, path='/data', value='')
+
+    assert [column['name'] for column in payload['columns']] == ['b']
+    assert payload['rows'] == [{'b': 'hello'}]
+    assert payload['query'] == {'b': 'hello'}
+
+
+def test_builtin_data_endpoint_value_key_with_custom_attr():
+    table = Table(
+        rows=[Struct(a=Struct(value=7), title='Seven')],
+        columns__name=Column(attr='title'),
+        columns__custom=Column(attr='a__value'),
+    )
+
+    payload = perform_ajax_dispatch(root=table.bind(request=req('get')), path='/data', value='')
+
+    assert [column['value_key'] for column in payload['columns']] == ['name', 'custom']
+    assert payload['rows'] == [{'name': 'Seven', 'custom': '7'}]
+
+
+def test_builtin_data_endpoint_available_on_plain_table():
+    table = Table(rows=[])
+
+    payload = perform_ajax_dispatch(root=table.bind(request=req('get')), path='/data', value='')
+
+    assert payload['columns'] == []
+    assert payload['rows'] == []
+    assert payload['query'] == {}
+    assert payload['paginator']['page'] == 1
+
+
 def test_ajax_data_endpoint():
     class TestTable(Table):
         class Meta:
