@@ -1,10 +1,8 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 6f0401b6..800aed33 100755
+index 6f0401b6..f557622d 100755
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
-@@ -8,6 +8,7 @@ from datetime import (
-     time,
- )
+@@ -8,6 +8,7 @@
  from textwrap import dedent
  from urllib.parse import urlencode
  
@@ -12,7 +10,7 @@ index 6f0401b6..800aed33 100755
  import pytest
  from django.db.models import (
      F,
-@@ -378,6 +379,125 @@ def test_generator():
+@@ -378,6 +379,157 @@ class TestTable(Table):
      )
  
  
@@ -123,17 +121,59 @@ index 6f0401b6..800aed33 100755
 +    assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '5']
 +
 +
++def test_table_footer_callable_kwargs():
++    rows = [
++        Struct(name='A', quantity=2),
++        Struct(name='B', quantity=3),
++        Struct(name='C', quantity=5),
++    ]
++
++    captured_value_kwargs = {}
++    captured_format_kwargs = {}
++
++    def capture_value_kwargs(**kwargs):
++        captured_value_kwargs.update(kwargs)
++        return kwargs.get('column').iommi_bound_object().footer.aggregation
++
++    def capture_format_kwargs(value, **kwargs):
++        captured_format_kwargs.update(kwargs)
++        return str(value)
++
++    class KwargsTestTable(Table):
++        name = Column(footer__include=True, footer__value='Total')
++        quantity = Column.integer(
++            attr='quantity',
++            footer__include=True,
++            footer__aggregation='sum',
++            footer__value=capture_value_kwargs,
++            footer__format=capture_format_kwargs,
++        )
++
++    table = KwargsTestTable(rows=rows)
++    bound_table = table.bind(request=req('get'))
++    html = bound_table.__html__()
++
++    # Verify footer__value callable received expected kwargs
++    assert 'table' in captured_value_kwargs
++    assert 'column' in captured_value_kwargs
++    assert 'values' in captured_value_kwargs
++    assert 'rows' in captured_value_kwargs
++    
++    # Verify footer__format callable received expected kwargs
++    assert 'table' in captured_format_kwargs
++    assert 'column' in captured_format_kwargs
++    assert 'value' in captured_format_kwargs
++
++
  @pytest.fixture
  def NoSortTable():  # noqa: N802
      class NoSortTable(Table):
-         class Meta:
-             sortable = False
 diff --git a/test.sh b/test.sh
 new file mode 100755
-index 00000000..99dd5961
+index 00000000..e4f80fdf
 --- /dev/null
 +++ b/test.sh
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,29 @@
 +#!/bin/bash
 +set -euo pipefail
 +
@@ -149,14 +189,15 @@ index 00000000..99dd5961
 +case "$1" in
 +  base)
 +    # Run existing test suite; should pass on the base commit
-+    python3 -m pytest tests docs
++    python3 -m pytest
 +    ;;
 +  new)
 +    # Run only the newly added tests; expected to fail before implementing the feature
 +    python3 -m pytest \
 +      iommi/table__tests.py::test_table_column_footer_aggregations \
 +      iommi/table__tests.py::test_table_footer_pagination_scope \
-+      iommi/table__tests.py::test_table_footer_table_default_paginate
++      iommi/table__tests.py::test_table_footer_table_default_paginate \
++      iommi/table__tests.py::test_table_footer_callable_kwargs
 +    ;;
 +  *)
 +    usage

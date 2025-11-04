@@ -486,6 +486,50 @@ def test_table_footer_table_default_paginate():
     assert [cell.get_text(strip=True) for cell in footer_cells] == ['Totals', '5']
 
 
+def test_table_footer_callable_kwargs():
+    rows = [
+        Struct(name='A', quantity=2),
+        Struct(name='B', quantity=3),
+        Struct(name='C', quantity=5),
+    ]
+
+    captured_value_kwargs = {}
+    captured_format_kwargs = {}
+
+    def capture_value_kwargs(**kwargs):
+        captured_value_kwargs.update(kwargs)
+        return kwargs.get('column').iommi_bound_object().footer.aggregation
+
+    def capture_format_kwargs(value, **kwargs):
+        captured_format_kwargs.update(kwargs)
+        return str(value)
+
+    class KwargsTestTable(Table):
+        name = Column(footer__include=True, footer__value='Total')
+        quantity = Column.integer(
+            attr='quantity',
+            footer__include=True,
+            footer__aggregation='sum',
+            footer__value=capture_value_kwargs,
+            footer__format=capture_format_kwargs,
+        )
+
+    table = KwargsTestTable(rows=rows)
+    bound_table = table.bind(request=req('get'))
+    html = bound_table.__html__()
+
+    # Verify footer__value callable received expected kwargs
+    assert 'table' in captured_value_kwargs
+    assert 'column' in captured_value_kwargs
+    assert 'values' in captured_value_kwargs
+    assert 'rows' in captured_value_kwargs
+    
+    # Verify footer__format callable received expected kwargs
+    assert 'table' in captured_format_kwargs
+    assert 'column' in captured_format_kwargs
+    assert 'value' in captured_format_kwargs
+
+
 @pytest.fixture
 def NoSortTable():  # noqa: N802
     class NoSortTable(Table):
