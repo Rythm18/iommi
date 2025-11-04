@@ -1,8 +1,8 @@
 diff --git a/iommi/table__tests.py b/iommi/table__tests.py
-index 360cd54b634c..1a2b3c4d5e6f 100644
+index 1a3f5647..5ddfe7b0 100644
 --- a/iommi/table__tests.py
 +++ b/iommi/table__tests.py
-@@ -2369,6 +2369,104 @@
+@@ -2369,6 +2369,103 @@ def endpoints__foo__func(**_):
      assert actual == []
  
  
@@ -103,10 +103,9 @@ index 360cd54b634c..1a2b3c4d5e6f 100644
 +    assert payload['rows'] == [{'b': 'hello'}]
 +    assert payload['query'] == {'b': 'hello'}
 +
-+
+ 
  def test_ajax_data_endpoint():
      class TestTable(Table):
-         class Meta:
 diff --git a/test.sh b/test.sh
 new file mode 100755
 index 00000000..27076ab2
@@ -133,3 +132,4 @@ index 00000000..27076ab2
 +    exit 1
 +    ;;
 +esac
+
